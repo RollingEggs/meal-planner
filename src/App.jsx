@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { DEFAULT_GENRES, STORAGE_KEY, getDateRange, today, formatDate, addDays, genId } from './constants';
+import { DEFAULT_GENRES, STORAGE_KEY, getDateRange, today, formatDate, addDays, genId, COL_WIDTH, LABEL_WIDTH } from './constants';
 import { useUndoRedo } from './hooks/useUndoRedo';
 import GanttChart from './components/GanttChart';
 import PrepSchedule from './components/PrepSchedule';
@@ -7,7 +7,6 @@ import RecipeList from './components/RecipeList';
 import DetailModal from './components/DetailModal';
 import SettingsModal from './components/SettingsModal';
 import RecipeManager from './components/RecipeManager';
-import GhostCard from './components/GhostCard';
 
 const INITIAL_DATA = {
   recipes: [],
@@ -47,7 +46,8 @@ export default function App() {
   const { state: data, pushState, undo, redo, canUndo, canRedo, undoCount, redoCount, resetHistory } = useUndoRedo(cleanOldData(loadData()));
 
   const [tab, setTab] = useState('plan');
-  const [dragState, setDragState] = useState(null);
+  const [selectedRecipeId, setSelectedRecipeId] = useState(null);
+  const [selectedScheduleItemId, setSelectedScheduleItemId] = useState(null);
   const [detailItem, setDetailItem] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const scrolledRef = useRef(false);
@@ -67,7 +67,7 @@ export default function App() {
       if (el) {
         const todayIdx = dates.indexOf(today());
         if (todayIdx >= 0) {
-          const scrollTo = todayIdx * 64 - el.clientWidth / 2 + 32;
+          const scrollTo = todayIdx * COL_WIDTH + COL_WIDTH / 2 - (el.clientWidth - LABEL_WIDTH) / 2;
           el.scrollLeft = Math.max(0, scrollTo);
         }
         scrolledRef.current = true;
@@ -99,16 +99,20 @@ export default function App() {
 
   // Drop recipe to schedule
   const handleDropRecipe = useCallback((recipeId, date, mealTime) => {
+    const recipe = data.recipes.find((r) => r.id === recipeId);
+    const genre = recipe ? data.genres.find((g) => g.id === recipe.genreId) : null;
+    const isEatingOut = genre && genre.name === '外食';
     const newItem = {
       id: genId(),
       recipeId,
       startDate: date,
       endDate: date,
-      prepDate: addDays(date, -1),
-      noPrep: false,
+      prepDate: isEatingOut ? null : addDays(date, -1),
+      noPrep: isEatingOut ? true : false,
       mealTime: mealTime || 'lunch',
     };
     pushState({ ...data, scheduled: [...data.scheduled, newItem] });
+    setSelectedRecipeId(null);
   }, [data, pushState]);
 
   // Move item to new date/lane
@@ -123,6 +127,7 @@ export default function App() {
         return { ...s, startDate: newDate, endDate: newEnd, prepDate: newPrep, mealTime: newLane || s.mealTime };
       }),
     });
+    setSelectedScheduleItemId(null);
   }, [data, pushState]);
 
   // Resize item
@@ -199,7 +204,7 @@ export default function App() {
   };
 
   return (
-    <div style={{ maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: '#FAFAF8' }}>
+    <div style={{ maxWidth: 900, margin: '0 auto', minHeight: '100vh', background: '#FAFAF8' }}>
       {/* Header */}
       <div style={headerStyle}>
         <div style={{ display: 'flex', gap: 6 }}>
@@ -234,8 +239,9 @@ export default function App() {
               onDropRecipe={handleDropRecipe}
               onMoveItem={handleMoveItem}
               onResizeItem={handleResizeItem}
-              dragState={dragState}
-              setDragState={setDragState}
+              selectedRecipeId={selectedRecipeId}
+              selectedScheduleItemId={selectedScheduleItemId}
+              setSelectedScheduleItemId={setSelectedScheduleItemId}
             />
             <PrepSchedule
               dates={dates}
@@ -246,17 +252,17 @@ export default function App() {
             <RecipeList
               recipes={data.recipes}
               genres={data.genres}
-              dragState={dragState}
-              setDragState={setDragState}
+              selectedRecipeId={selectedRecipeId}
+              onSelectRecipe={(id) => {
+                setSelectedRecipeId(id);
+                if (id) setSelectedScheduleItemId(null);
+              }}
             />
           </>
         ) : (
           <RecipeManager data={data} onUpdate={handleDataUpdate} />
         )}
       </div>
-
-      {/* Ghost card for touch drag */}
-      <GhostCard dragState={dragState} recipes={data.recipes} genres={data.genres} />
 
       {/* Detail modal */}
       {detailItem && (

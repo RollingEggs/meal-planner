@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
 
-export default function RecipeList({ recipes, genres, dragState, setDragState }) {
+export default function RecipeList({ recipes, genres, selectedRecipeId, onSelectRecipe }) {
   const [collapsed, setCollapsed] = useState(false);
   const [filter, setFilter] = useState('all');
 
   const filtered = filter === 'all' ? recipes : recipes.filter((r) => r.genreId === filter);
 
-  const handleDragStart = (e, recipeId) => {
-    e.dataTransfer.effectAllowed = 'copy';
-    setDragState({ type: 'new', recipeId });
-  };
-
-  const handleTouchStart = (e, recipeId) => {
-    const touch = e.touches[0];
-    setDragState({ type: 'new', recipeId, ghostX: touch.clientX, ghostY: touch.clientY });
+  const handleTap = (recipeId) => {
+    if (selectedRecipeId === recipeId) {
+      onSelectRecipe(null);
+    } else {
+      onSelectRecipe(recipeId);
+    }
   };
 
   const getGenre = (gid) => genres.find((g) => g.id === gid);
@@ -30,6 +28,12 @@ export default function RecipeList({ recipes, genres, dragState, setDragState })
           background: '#3D3D3D', color: '#fff', fontSize: 10, padding: '1px 8px',
           borderRadius: 10, fontWeight: 700,
         }}>{recipes.length}</span>
+        {selectedRecipeId && (
+          <span style={{
+            background: '#E53E3E', color: '#fff', fontSize: 10, padding: '1px 8px',
+            borderRadius: 10, fontWeight: 700, marginLeft: 'auto',
+          }}>選択中</span>
+        )}
       </div>
       {!collapsed && (
         <div style={{
@@ -62,15 +66,18 @@ export default function RecipeList({ recipes, genres, dragState, setDragState })
             {filtered.map((r) => {
               const g = getGenre(r.genreId);
               const gc = g ? g.color : '#6C757D';
+              const isSelected = selectedRecipeId === r.id;
               return (
                 <div
                   key={r.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, r.id)}
-                  onTouchStart={(e) => handleTouchStart(e, r.id)}
+                  onClick={() => handleTap(r.id)}
                   style={{
-                    padding: '8px 10px', background: gc + '0D', border: `1.5px solid ${gc}33`,
-                    borderRadius: 10, cursor: 'grab', touchAction: 'none',
+                    padding: '8px 10px',
+                    background: isSelected ? gc + '33' : gc + '0D',
+                    border: isSelected ? `2.5px solid ${gc}` : `1.5px solid ${gc}33`,
+                    borderRadius: 10, cursor: 'pointer',
+                    boxShadow: isSelected ? `0 0 8px ${gc}44` : 'none',
+                    transition: 'all 0.15s',
                   }}
                 >
                   <span style={{

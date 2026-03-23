@@ -1,13 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { MEAL_TIMES, COL_WIDTH, LANE_HEIGHT, HEADER_HEIGHT, MEMO_ROW_HEIGHT, LABEL_WIDTH } from '../constants';
 import MemoCell from './MemoCell';
+
+const TAP_THRESHOLD_PX = 10;
+const TAP_THRESHOLD_MS = 300;
 
 export default function GanttChart({
   dates, scheduled, recipes, genres, memos,
   onMemoChange, onItemTap, onDropRecipe, onMoveItem, onResizeItem,
-  dragState, setDragState,
+  selectedRecipeId, selectedScheduleItemId, setSelectedScheduleItemId,
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [resizeDrag, setResizeDrag] = useState(null);
+  const touchRef = useRef(null);
+
   const todayStr = useMemo(() => {
     const d = new Date(); const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -22,7 +28,6 @@ export default function GanttChart({
   }, [dates]);
 
   const totalWidth = dates.length * COL_WIDTH;
-  const ganttBodyHeight = LANE_HEIGHT * 3;
 
   const getGenreColor = (recipeId) => {
     const r = recipes.find((rec) => rec.id === recipeId);
@@ -35,9 +40,6 @@ export default function GanttChart({
     return r ? r.name : '?';
   };
 
-  const getMealTimeIdx = (mt) => MEAL_TIMES.findIndex((m) => m.key === mt);
-
-  // Eventing helpers for drag/drop
   const getDateAndLaneFromPosition = (clientX, clientY, scrollEl) => {
     if (!scrollEl) return { date: null, lane: null };
     const rect = scrollEl.getBoundingClientRect();
@@ -51,40 +53,115 @@ export default function GanttChart({
     return { date, lane, colIdx, laneIdx };
   };
 
-  // Handle drop from recipe list
-  const handleDrop = (e) => {
-    const scrollEl = e.currentTarget;
-    const clientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
-    const clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
+  // Check if a tap hit any bar in the lane area
+  const getBarAtPosition = useCallback((date, lane) => {
+    if (!date || !lane) return null;
+    return scheduled.find((s) => {
+      if ((s.mealTime || 'lunch') !== lane) return false;
+      return date >= s.startDate && date <= s.endDate;
+    });
+  }, [scheduled]);
+
+  // Handle tap on the gantt grid area (for placing/moving recipes)
+  const handleGridTap = (clientX, clientY) => {
+    const scrollEl = document.getElementById('gantt-scroll');
     const { date, lane } = getDateAndLaneFromPosition(clientX, clientY, scrollEl);
-    if (date && lane && dragState && dragState.type === 'new') {
-      onDropRecipe(dragState.recipeId, date, lane);
+    if (!date || !lane) return;
+
+    // Check if user tapped on an existing bar
+    const hitBar = getBarAtPosition(date, lane);
+
+    if (hitBar) {
+      // Tapped on a bar
+      if (selectedScheduleItemId === hitBar.id) {
+        // Already selected → open edit modal (double-tap effect)
+        onItemTap(hitBar);
+        setSelectedScheduleItemId(null);
+      } else {
+        // Select this bar for moving
+        setSelectedScheduleItemId(hitBar.id);
+      }
+      return;
     }
-    if (date && lane && dragState && dragState.type === 'move') {
-      onMoveItem(dragState.itemId, date, lane);
+
+    // Tapped on empty area
+    if (selectedRecipeId) {
+      // Place new recipe from list
+      onDropRecipe(selectedRecipeId, date, lane);
+    } else if (selectedScheduleItemId) {
+      // Move selected schedule item
+      onMoveItem(selectedScheduleItemId, date, lane);
     }
-    setDragState(null);
   };
 
-  // Touch/mouse move for existing bars
-  const handleBarDragStart = (e, item, action) => {
-    e.stopPropagation();
-    const clientX = e.clientX ?? e.touches?.[0]?.clientX;
-    const clientY = e.clientY ?? e.touches?.[0]?.clientY;
-    if (action === 'resize') {
-      setDragState({ type: 'resize', itemId: item.id, startX: clientX, origEnd: item.endDate });
-    } else {
-      setDragState({ type: 'move', itemId: item.id, recipeId: item.recipeId, startX: clientX, startY: clientY });
+  // Mouse click on grid
+  const handleGridClick = (e) => {
+    if (resizeDrag) return;
+    handleGridTap(e.clientX, e.clientY);
+  };
+
+  // Touch handling: distinguish tap from scroll
+  const handleTouchStart = (e) => {
+    if (resizeDrag) return;
+    const touch = e.touches[0];
+    touchRef.current = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      startTime: Date.now(),
+      moved: false,
+    };
+  };
+
+  const handleTouchMove = (e) => {
+    if (!touchRef.current) return;
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - touchRef.current.startX);
+    const dy = Math.abs(touch.clientY - touchRef.current.startY);
+    if (dx > TAP_THRESHOLD_PX || dy > TAP_THRESHOLD_PX) {
+      touchRef.current.moved = true;
     }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (!touchRef.current) return;
+    const elapsed = Date.now() - touchRef.current.startTime;
+    const wasTap = !touchRef.current.moved && elapsed < TAP_THRESHOLD_MS;
+    if (wasTap) {
+      const touch = e.changedTouches[0];
+      handleGridTap(touch.clientX, touch.clientY);
+    }
+    touchRef.current = null;
+  };
+
+  // Resize handle: touch drag
+  const handleResizeTouchStart = (e, item) => {
+    e.stopPropagation();
+    const touch = e.touches[0];
+    setResizeDrag({ itemId: item.id, startX: touch.clientX, origEnd: item.endDate });
+  };
+
+  const handleResizeTouchMove = (e) => {
+    if (!resizeDrag) return;
+    e.preventDefault();
+  };
+
+  const handleResizeTouchEnd = (e) => {
+    if (!resizeDrag) return;
+    const touch = e.changedTouches[0];
+    const scrollEl = document.getElementById('gantt-scroll');
+    const { date } = getDateAndLaneFromPosition(touch.clientX, touch.clientY, scrollEl);
+    if (date) {
+      onResizeItem(resizeDrag.itemId, date);
+    }
+    setResizeDrag(null);
   };
 
   const scheduleCount = scheduled.length;
 
-  // highlight column
-  const highlightCol = dragState?.hoverColIdx;
-  const highlightLane = dragState?.hoverLaneIdx;
-  const highlightColor = dragState?.recipeId ? getGenreColor(dragState.recipeId)
-    : dragState?.itemId ? getGenreColor(scheduled.find(s => s.id === dragState.itemId)?.recipeId) : null;
+  // Determine highlight color based on selection
+  const highlightColor = selectedRecipeId ? getGenreColor(selectedRecipeId)
+    : selectedScheduleItemId ? getGenreColor(scheduled.find(s => s.id === selectedScheduleItemId)?.recipeId) : null;
+  const hasSelection = !!(selectedRecipeId || selectedScheduleItemId);
 
   return (
     <div style={{ marginBottom: 2 }}>
@@ -98,39 +175,20 @@ export default function GanttChart({
           background: '#3D3D3D', color: '#fff', fontSize: 10, padding: '1px 8px',
           borderRadius: 10, fontWeight: 700,
         }}>{scheduleCount}</span>
+        {hasSelection && (
+          <span style={{
+            background: highlightColor || '#E53E3E', color: '#fff', fontSize: 10, padding: '1px 8px',
+            borderRadius: 10, fontWeight: 700, marginLeft: 'auto',
+          }}>タップで配置</span>
+        )}
       </div>
       {!collapsed && (
         <div
           id="gantt-scroll"
-          onDragOver={(e) => {
-            e.preventDefault();
-            const { colIdx, laneIdx, date, lane } = getDateAndLaneFromPosition(e.clientX, e.clientY, e.currentTarget);
-            if (dragState) {
-              setDragState((prev) => ({ ...prev, hoverColIdx: colIdx, hoverLaneIdx: laneIdx, hoverDate: date, hoverLane: lane }));
-            }
-          }}
-          onDrop={handleDrop}
-          onTouchMove={(e) => {
-            if (!dragState) return;
-            const touch = e.touches[0];
-            const scrollEl = document.getElementById('gantt-scroll');
-            const { colIdx, laneIdx, date, lane } = getDateAndLaneFromPosition(touch.clientX, touch.clientY, scrollEl);
-            setDragState((prev) => prev ? ({ ...prev, hoverColIdx: colIdx, hoverLaneIdx: laneIdx, hoverDate: date, hoverLane: lane, ghostX: touch.clientX, ghostY: touch.clientY }) : prev);
-          }}
-          onTouchEnd={(e) => {
-            if (!dragState) return;
-            const touch = e.changedTouches[0];
-            const scrollEl = document.getElementById('gantt-scroll');
-            const { date, lane } = getDateAndLaneFromPosition(touch.clientX, touch.clientY, scrollEl);
-            if (date && lane) {
-              if (dragState.type === 'new') onDropRecipe(dragState.recipeId, date, lane);
-              if (dragState.type === 'move') onMoveItem(dragState.itemId, date, lane);
-              if (dragState.type === 'resize') {
-                onResizeItem(dragState.itemId, date);
-              }
-            }
-            setDragState(null);
-          }}
+          onClick={handleGridClick}
+          onTouchStart={handleTouchStart}
+          onTouchMove={(e) => { handleTouchMove(e); handleResizeTouchMove(e); }}
+          onTouchEnd={(e) => { handleResizeTouchEnd(e); handleTouchEnd(e); }}
           style={{
             overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch',
             background: '#fff', borderRadius: '0 0 10px 10px', border: '1px solid #eee',
@@ -156,19 +214,17 @@ export default function GanttChart({
             <div style={{ position: 'relative', flex: 1 }}>
               {/* Date header */}
               <div style={{ display: 'flex', height: HEADER_HEIGHT }}>
-                {dates.map((d, i) => {
+                {dates.map((d) => {
                   const dow = new Date(d).getDay();
                   const isToday = d === todayStr;
-                  const isHighlight = highlightCol === i && dragState;
                   return (
                     <div key={d} style={{
                       width: COL_WIDTH, flexShrink: 0, textAlign: 'center',
                       borderRight: '1px solid #f0f0f0',
-                      background: isHighlight ? (highlightColor + '22') : isToday ? '#3D3D3D' : '#FAFAF8',
-                      color: isHighlight ? highlightColor : isToday ? '#fff' : dow === 0 ? '#DC2626' : dow === 6 ? '#2563EB' : '#666',
+                      background: isToday ? '#3D3D3D' : '#FAFAF8',
+                      color: isToday ? '#fff' : dow === 0 ? '#DC2626' : dow === 6 ? '#2563EB' : '#666',
                       display: 'flex', flexDirection: 'column', justifyContent: 'center',
                       fontSize: 11, fontWeight: isToday ? 700 : 500, lineHeight: 1.3,
-                      transition: 'background 0.15s',
                     }}>
                       <div style={{ fontSize: 9 }}>{['日','月','火','水','木','金','土'][dow]}</div>
                       <div>{new Date(d).getMonth() + 1}/{new Date(d).getDate()}</div>
@@ -190,16 +246,13 @@ export default function GanttChart({
               {MEAL_TIMES.map((mt, laneI) => (
                 <div key={mt.key} style={{
                   height: LANE_HEIGHT, position: 'relative',
-                  background: highlightLane === laneI && dragState ? (mt.color + '0A') : 'transparent',
                   borderBottom: `2px solid ${mt.color}22`,
-                  transition: 'background 0.15s',
                 }}>
                   {/* Column grid lines */}
                   <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', pointerEvents: 'none' }}>
-                    {dates.map((d, ci) => (
+                    {dates.map((d) => (
                       <div key={d} style={{
                         width: COL_WIDTH, flexShrink: 0, borderRight: '1px solid #f5f5f5',
-                        background: highlightCol === ci && dragState ? (highlightColor + '0A') : 'transparent',
                       }} />
                     ))}
                   </div>
@@ -216,28 +269,24 @@ export default function GanttChart({
                       const width = span * COL_WIDTH - 4;
                       const gc = getGenreColor(item.recipeId);
                       const mtColor = mt.color;
+                      const isSelected = selectedScheduleItemId === item.id;
                       return (
                         <div
                           key={item.id}
-                          draggable
-                          onDragStart={(e) => {
-                            e.dataTransfer.effectAllowed = 'move';
-                            handleBarDragStart(e, item, 'move');
-                          }}
-                          onTouchStart={(e) => handleBarDragStart(e, item, 'move')}
-                          onClick={(e) => { e.stopPropagation(); onItemTap(item); }}
                           style={{
                             position: 'absolute', top: 3, left: left + 2,
                             width: Math.max(width, 30), height: LANE_HEIGHT - 6,
-                            background: gc + '18', border: `1px solid ${gc}66`,
+                            background: isSelected ? gc + '38' : gc + '18',
+                            border: isSelected ? `2px solid ${gc}` : `1px solid ${gc}66`,
                             borderRadius: 6, display: 'flex', alignItems: 'center',
-                            cursor: 'grab', overflow: 'hidden', zIndex: 2,
+                            cursor: 'pointer', overflow: 'hidden', zIndex: 2,
                             fontSize: 11, fontWeight: 600, color: gc,
+                            boxShadow: isSelected ? `0 0 6px ${gc}44` : 'none',
+                            transition: 'all 0.15s',
                           }}
                         >
                           {/* Meal time color line */}
                           <div style={{ width: 4, height: '100%', background: mtColor, flexShrink: 0, borderRadius: '6px 0 0 6px' }} />
-                          {item.noPrep && <span style={{ marginLeft: 2, fontSize: 10 }}>🛒</span>}
                           <span style={{
                             flex: 1, overflow: 'hidden', whiteSpace: 'nowrap',
                             textOverflow: 'ellipsis', padding: '0 3px', fontSize: 10,
@@ -246,16 +295,7 @@ export default function GanttChart({
                           </span>
                           {/* Resize handle */}
                           <div
-                            draggable
-                            onDragStart={(e) => {
-                              e.stopPropagation();
-                              e.dataTransfer.effectAllowed = 'move';
-                              handleBarDragStart(e, item, 'resize');
-                            }}
-                            onTouchStart={(e) => {
-                              e.stopPropagation();
-                              handleBarDragStart(e, item, 'resize');
-                            }}
+                            onTouchStart={(e) => handleResizeTouchStart(e, item)}
                             onClick={(e) => e.stopPropagation()}
                             style={{
                               width: 16, height: '100%', display: 'flex', alignItems: 'center',
