@@ -1,0 +1,283 @@
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { DEFAULT_GENRES, STORAGE_KEY, getDateRange, today, formatDate, addDays, genId } from './constants';
+import { useUndoRedo } from './hooks/useUndoRedo';
+import GanttChart from './components/GanttChart';
+import PrepSchedule from './components/PrepSchedule';
+import RecipeList from './components/RecipeList';
+import DetailModal from './components/DetailModal';
+import SettingsModal from './components/SettingsModal';
+import RecipeManager from './components/RecipeManager';
+import GhostCard from './components/GhostCard';
+
+const INITIAL_DATA = {
+  recipes: [],
+  scheduled: [],
+  genres: [...DEFAULT_GENRES],
+  memos: {},
+};
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        recipes: parsed.recipes || [],
+        scheduled: parsed.scheduled || [],
+        genres: parsed.genres && parsed.genres.length > 0 ? parsed.genres : [...DEFAULT_GENRES],
+        memos: parsed.memos || {},
+      };
+    }
+  } catch { /* ignore */ }
+  return { ...INITIAL_DATA, genres: [...DEFAULT_GENRES] };
+}
+
+function cleanOldData(data) {
+  const cutoff = addDays(today(), -14);
+  return {
+    ...data,
+    scheduled: data.scheduled.filter((s) => s.endDate >= cutoff || s.startDate >= cutoff),
+    memos: Object.fromEntries(
+      Object.entries(data.memos).filter(([d]) => d >= cutoff)
+    ),
+  };
+}
+
+export default function App() {
+  const { state: data, pushState, undo, redo, canUndo, canRedo, undoCount, redoCount, resetHistory } = useUndoRedo(cleanOldData(loadData()));
+
+  const [tab, setTab] = useState('plan');
+  const [dragState, setDragState] = useState(null);
+  const [detailItem, setDetailItem] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const scrolledRef = useRef(false);
+
+  const dates = useMemo(() => getDateRange(today(), 14, 14), []);
+
+  // Save to localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }, [data]);
+
+  // Auto-scroll gantt to today on mount
+  useEffect(() => {
+    if (scrolledRef.current) return;
+    const timer = setTimeout(() => {
+      const el = document.getElementById('gantt-scroll');
+      if (el) {
+        const todayIdx = dates.indexOf(today());
+        if (todayIdx >= 0) {
+          const scrollTo = todayIdx * 64 - el.clientWidth / 2 + 32;
+          el.scrollLeft = Math.max(0, scrollTo);
+        }
+        scrolledRef.current = true;
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [dates, tab]);
+
+  // Sync prep scroll with gantt scroll
+  useEffect(() => {
+    const gantt = document.getElementById('gantt-scroll');
+    const prep = document.getElementById('prep-scroll');
+    if (!gantt || !prep) return;
+    const handler = () => { prep.scrollLeft = gantt.scrollLeft; };
+    gantt.addEventListener('scroll', handler);
+    return () => gantt.removeEventListener('scroll', handler);
+  });
+
+  // Memo change
+  const handleMemoChange = useCallback((dateStr, text) => {
+    const newMemos = { ...data.memos };
+    if (text.trim()) {
+      newMemos[dateStr] = text.trim();
+    } else {
+      delete newMemos[dateStr];
+    }
+    pushState({ ...data, memos: newMemos });
+  }, [data, pushState]);
+
+  // Drop recipe to schedule
+  const handleDropRecipe = useCallback((recipeId, date, mealTime) => {
+    const newItem = {
+      id: genId(),
+      recipeId,
+      startDate: date,
+      endDate: date,
+      prepDate: addDays(date, -1),
+      noPrep: false,
+      mealTime: mealTime || 'lunch',
+    };
+    pushState({ ...data, scheduled: [...data.scheduled, newItem] });
+  }, [data, pushState]);
+
+  // Move item to new date/lane
+  const handleMoveItem = useCallback((itemId, newDate, newLane) => {
+    pushState({
+      ...data,
+      scheduled: data.scheduled.map((s) => {
+        if (s.id !== itemId) return s;
+        const daySpan = Math.round((new Date(s.endDate) - new Date(s.startDate)) / 86400000);
+        const newEnd = addDays(newDate, daySpan);
+        const newPrep = s.noPrep ? null : (s.prepDate === s.startDate ? newDate : addDays(newDate, -1));
+        return { ...s, startDate: newDate, endDate: newEnd, prepDate: newPrep, mealTime: newLane || s.mealTime };
+      }),
+    });
+  }, [data, pushState]);
+
+  // Resize item
+  const handleResizeItem = useCallback((itemId, newEndDate) => {
+    pushState({
+      ...data,
+      scheduled: data.scheduled.map((s) => {
+        if (s.id !== itemId) return s;
+        if (newEndDate < s.startDate) return s;
+        return { ...s, endDate: newEndDate };
+      }),
+    });
+  }, [data, pushState]);
+
+  // Update scheduled item from detail modal
+  const handleUpdateItem = useCallback((updated) => {
+    pushState({
+      ...data,
+      scheduled: data.scheduled.map((s) => s.id === updated.id ? updated : s),
+    });
+    setDetailItem(updated);
+  }, [data, pushState]);
+
+  // Delete scheduled item
+  const handleDeleteItem = useCallback((itemId) => {
+    pushState({
+      ...data,
+      scheduled: data.scheduled.filter((s) => s.id !== itemId),
+    });
+  }, [data, pushState]);
+
+  // Data update (for recipe manager)
+  const handleDataUpdate = useCallback((newData) => {
+    pushState(newData);
+  }, [pushState]);
+
+  // Import
+  const handleImport = useCallback((importedData) => {
+    const cleaned = cleanOldData({
+      recipes: importedData.recipes || [],
+      scheduled: importedData.scheduled || [],
+      genres: importedData.genres && importedData.genres.length > 0 ? importedData.genres : [...DEFAULT_GENRES],
+      memos: importedData.memos || {},
+    });
+    resetHistory(cleaned);
+  }, [resetHistory]);
+
+  const headerStyle = {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '10px 14px', background: '#fff', borderBottom: '1px solid #eee',
+    position: 'sticky', top: 0, zIndex: 100,
+  };
+
+  const tabBtnStyle = (active) => ({
+    padding: '6px 16px', borderRadius: 20, border: 'none',
+    background: active ? '#3D3D3D' : '#f0f0f0',
+    color: active ? '#fff' : '#888',
+    fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+  });
+
+  const iconBtnStyle = (enabled) => ({
+    width: 34, height: 34, borderRadius: 8, border: 'none',
+    background: enabled ? '#f0f0f0' : '#f8f8f8',
+    color: enabled ? '#3D3D3D' : '#ccc',
+    fontSize: 16, cursor: enabled ? 'pointer' : 'default',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    position: 'relative', fontFamily: 'inherit',
+  });
+
+  const badgeStyle = {
+    position: 'absolute', top: -4, right: -4, background: '#E53E3E', color: '#fff',
+    fontSize: 8, fontWeight: 700, width: 14, height: 14, borderRadius: '50%',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  };
+
+  return (
+    <div style={{ maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: '#FAFAF8' }}>
+      {/* Header */}
+      <div style={headerStyle}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button style={tabBtnStyle(tab === 'plan')} onClick={() => setTab('plan')}>献立</button>
+          <button style={tabBtnStyle(tab === 'recipe')} onClick={() => setTab('recipe')}>レシピ管理</button>
+        </div>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          <button style={iconBtnStyle(canUndo)} onClick={undo} disabled={!canUndo} title="元に戻す">
+            ↩
+            {undoCount > 0 && <span style={badgeStyle}>{undoCount}</span>}
+          </button>
+          <button style={iconBtnStyle(canRedo)} onClick={redo} disabled={!canRedo} title="やり直す">
+            ↪
+            {redoCount > 0 && <span style={badgeStyle}>{redoCount}</span>}
+          </button>
+          <button style={iconBtnStyle(true)} onClick={() => setShowSettings(true)} title="設定">⚙</button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div style={{ padding: '8px 10px' }}>
+        {tab === 'plan' ? (
+          <>
+            <GanttChart
+              dates={dates}
+              scheduled={data.scheduled}
+              recipes={data.recipes}
+              genres={data.genres}
+              memos={data.memos}
+              onMemoChange={handleMemoChange}
+              onItemTap={setDetailItem}
+              onDropRecipe={handleDropRecipe}
+              onMoveItem={handleMoveItem}
+              onResizeItem={handleResizeItem}
+              dragState={dragState}
+              setDragState={setDragState}
+            />
+            <PrepSchedule
+              dates={dates}
+              scheduled={data.scheduled}
+              recipes={data.recipes}
+              genres={data.genres}
+            />
+            <RecipeList
+              recipes={data.recipes}
+              genres={data.genres}
+              dragState={dragState}
+              setDragState={setDragState}
+            />
+          </>
+        ) : (
+          <RecipeManager data={data} onUpdate={handleDataUpdate} />
+        )}
+      </div>
+
+      {/* Ghost card for touch drag */}
+      <GhostCard dragState={dragState} recipes={data.recipes} genres={data.genres} />
+
+      {/* Detail modal */}
+      {detailItem && (
+        <DetailModal
+          item={detailItem}
+          recipes={data.recipes}
+          genres={data.genres}
+          onUpdate={handleUpdateItem}
+          onDelete={handleDeleteItem}
+          onClose={() => setDetailItem(null)}
+        />
+      )}
+
+      {/* Settings modal */}
+      {showSettings && (
+        <SettingsModal
+          data={data}
+          onImport={handleImport}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
+    </div>
+  );
+}
