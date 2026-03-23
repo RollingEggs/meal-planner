@@ -72,19 +72,20 @@ export default function RecipeList({ recipes, genres, selectedRecipeId, onSelect
                   key={r.id}
                   onClick={() => handleTap(r.id)}
                   style={{
-                    padding: '8px 10px',
+                    padding: '6px 10px',
                     background: isSelected ? gc + '33' : gc + '0D',
                     border: isSelected ? `2.5px solid ${gc}` : `1.5px solid ${gc}33`,
                     borderRadius: 10, cursor: 'pointer',
                     boxShadow: isSelected ? `0 0 8px ${gc}44` : 'none',
                     transition: 'all 0.15s',
+                    display: 'flex', alignItems: 'center', gap: 6,
                   }}
                 >
                   <span style={{
                     fontSize: 9, background: gc + '22', color: gc, padding: '1px 6px',
-                    borderRadius: 8, fontWeight: 700, display: 'inline-block', marginBottom: 3,
+                    borderRadius: 8, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0,
                   }}>{g ? g.name : 'その他'}</span>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#333' }}>{r.name}</div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
                 </div>
               );
             })}

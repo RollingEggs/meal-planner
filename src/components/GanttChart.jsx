@@ -5,6 +5,7 @@ import MemoCell from './MemoCell';
 const TAP_THRESHOLD_PX = 10;
 const TAP_THRESHOLD_MS = 300;
 const LONG_PRESS_MS = 500;
+const DOUBLE_TAP_MS = 400;
 
 export default function GanttChart({
   dates, scheduled, recipes, genres, memos,
@@ -17,6 +18,7 @@ export default function GanttChart({
   const longPressRef = useRef(null);
   const longPressFiredRef = useRef(false);
   const mouseDownRef = useRef(null);
+  const lastBarTapRef = useRef({ id: null, time: 0 });
 
   const todayStr = useMemo(() => {
     const d = new Date(); const y = d.getFullYear();
@@ -84,11 +86,18 @@ export default function GanttChart({
     const hitBar = getBarAtPosition(date, lane);
 
     if (hitBar) {
-      // Light tap on a bar → toggle selection
-      if (selectedScheduleItemId === hitBar.id) {
-        setSelectedScheduleItemId(null);
+      // Double tap on a bar → toggle selection
+      const now = Date.now();
+      const last = lastBarTapRef.current;
+      if (last.id === hitBar.id && now - last.time < DOUBLE_TAP_MS) {
+        if (selectedScheduleItemId === hitBar.id) {
+          setSelectedScheduleItemId(null);
+        } else {
+          setSelectedScheduleItemId(hitBar.id);
+        }
+        lastBarTapRef.current = { id: null, time: 0 };
       } else {
-        setSelectedScheduleItemId(hitBar.id);
+        lastBarTapRef.current = { id: hitBar.id, time: now };
       }
       return;
     }
