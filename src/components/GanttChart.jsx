@@ -4,6 +4,7 @@ import MemoCell from './MemoCell';
 
 const TAP_THRESHOLD_PX = 10;
 const TAP_THRESHOLD_MS = 300;
+const LONG_PRESS_MS = 500;
 
 export default function GanttChart({
   dates, scheduled, recipes, genres, memos,
@@ -13,6 +14,9 @@ export default function GanttChart({
   const [collapsed, setCollapsed] = useState(false);
   const [resizeDrag, setResizeDrag] = useState(null);
   const touchRef = useRef(null);
+  const longPressRef = useRef(null);
+  const longPressFiredRef = useRef(false);
+  const mouseDownRef = useRef(null);
 
   const todayStr = useMemo(() => {
     const d = new Date(); const y = d.getFullYear();
@@ -62,6 +66,14 @@ export default function GanttChart({
     });
   }, [scheduled]);
 
+  // Cancel any pending long press timer
+  const cancelLongPress = () => {
+    if (longPressRef.current) {
+      clearTimeout(longPressRef.current);
+      longPressRef.current = null;
+    }
+  };
+
   // Handle tap on the gantt grid area (for placing/moving recipes)
   const handleGridTap = (clientX, clientY) => {
     const scrollEl = document.getElementById('gantt-scroll');
@@ -72,13 +84,10 @@ export default function GanttChart({
     const hitBar = getBarAtPosition(date, lane);
 
     if (hitBar) {
-      // Tapped on a bar
+      // Light tap on a bar → toggle selection
       if (selectedScheduleItemId === hitBar.id) {
-        // Already selected → open edit modal (double-tap effect)
-        onItemTap(hitBar);
         setSelectedScheduleItemId(null);
       } else {
-        // Select this bar for moving
         setSelectedScheduleItemId(hitBar.id);
       }
       return;
@@ -94,13 +103,49 @@ export default function GanttChart({
     }
   };
 
-  // Mouse click on grid
-  const handleGridClick = (e) => {
-    if (resizeDrag) return;
-    handleGridTap(e.clientX, e.clientY);
+  // Start long press detection for a given position
+  const startLongPress = (clientX, clientY) => {
+    cancelLongPress();
+    longPressFiredRef.current = false;
+    const scrollEl = document.getElementById('gantt-scroll');
+    const { date, lane } = getDateAndLaneFromPosition(clientX, clientY, scrollEl);
+    const hitBar = getBarAtPosition(date, lane);
+    if (hitBar) {
+      longPressRef.current = setTimeout(() => {
+        longPressFiredRef.current = true;
+        onItemTap(hitBar);
+      }, LONG_PRESS_MS);
+    }
   };
 
-  // Touch handling: distinguish tap from scroll
+  // Mouse handling: mousedown/mouseup for tap + long press
+  const handleMouseDown = (e) => {
+    if (resizeDrag) return;
+    mouseDownRef.current = { startX: e.clientX, startY: e.clientY };
+    startLongPress(e.clientX, e.clientY);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!mouseDownRef.current) return;
+    const dx = Math.abs(e.clientX - mouseDownRef.current.startX);
+    const dy = Math.abs(e.clientY - mouseDownRef.current.startY);
+    if (dx > TAP_THRESHOLD_PX || dy > TAP_THRESHOLD_PX) {
+      cancelLongPress();
+    }
+  };
+
+  const handleMouseUp = (e) => {
+    cancelLongPress();
+    if (!mouseDownRef.current) return;
+    if (longPressFiredRef.current) {
+      mouseDownRef.current = null;
+      return;
+    }
+    handleGridTap(e.clientX, e.clientY);
+    mouseDownRef.current = null;
+  };
+
+  // Touch handling: distinguish tap / long press / scroll
   const handleTouchStart = (e) => {
     if (resizeDrag) return;
     const touch = e.touches[0];
@@ -110,6 +155,7 @@ export default function GanttChart({
       startTime: Date.now(),
       moved: false,
     };
+    startLongPress(touch.clientX, touch.clientY);
   };
 
   const handleTouchMove = (e) => {
@@ -119,13 +165,15 @@ export default function GanttChart({
     const dy = Math.abs(touch.clientY - touchRef.current.startY);
     if (dx > TAP_THRESHOLD_PX || dy > TAP_THRESHOLD_PX) {
       touchRef.current.moved = true;
+      cancelLongPress();
     }
   };
 
   const handleTouchEnd = (e) => {
+    cancelLongPress();
     if (!touchRef.current) return;
     const elapsed = Date.now() - touchRef.current.startTime;
-    const wasTap = !touchRef.current.moved && elapsed < TAP_THRESHOLD_MS;
+    const wasTap = !touchRef.current.moved && elapsed < TAP_THRESHOLD_MS && !longPressFiredRef.current;
     if (wasTap) {
       const touch = e.changedTouches[0];
       handleGridTap(touch.clientX, touch.clientY);
@@ -185,7 +233,9 @@ export default function GanttChart({
       {!collapsed && (
         <div
           id="gantt-scroll"
-          onClick={handleGridClick}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
           onTouchStart={handleTouchStart}
           onTouchMove={(e) => { handleTouchMove(e); handleResizeTouchMove(e); }}
           onTouchEnd={(e) => { handleResizeTouchEnd(e); handleTouchEnd(e); }}

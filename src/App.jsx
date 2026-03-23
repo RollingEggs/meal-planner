@@ -59,7 +59,14 @@ export default function App() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }, [data]);
 
-  // Auto-scroll gantt to today on mount
+  // Reset scroll flag when switching back to plan tab
+  useEffect(() => {
+    if (tab === 'plan') {
+      scrolledRef.current = false;
+    }
+  }, [tab]);
+
+  // Auto-scroll gantt to today on mount and tab switch
   useEffect(() => {
     if (scrolledRef.current) return;
     const timer = setTimeout(() => {

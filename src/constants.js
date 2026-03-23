@@ -17,7 +17,7 @@ export const MEAL_TIMES = [
   { key: 'dinner', icon: '🌙', label: '夜', color: '#9B1B30' },
 ];
 
-export const COL_WIDTH = 64;
+export const COL_WIDTH = 128;
 export const ROW_HEIGHT = 36;
 export const LANE_HEIGHT = ROW_HEIGHT;
 export const HEADER_HEIGHT = 44;
