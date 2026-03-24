@@ -51,6 +51,8 @@ export default function App() {
   const [detailItem, setDetailItem] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const scrolledRef = useRef(false);
+  const scrollSyncRef = useRef(false);
+  const [colWidth, setColWidth] = useState(COL_WIDTH);
 
   const dates = useMemo(() => getDateRange(today(), 14, 14), []);
 
@@ -74,7 +76,7 @@ export default function App() {
       if (el) {
         const todayIdx = dates.indexOf(today());
         if (todayIdx >= 0) {
-          const scrollTo = todayIdx * COL_WIDTH + COL_WIDTH / 2 - (el.clientWidth - LABEL_WIDTH) / 2;
+          const scrollTo = todayIdx * colWidth + colWidth / 2 - (el.clientWidth - LABEL_WIDTH) / 2;
           el.scrollLeft = Math.max(0, scrollTo);
         }
         scrolledRef.current = true;
@@ -83,14 +85,31 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [dates, tab]);
 
-  // Sync prep scroll with gantt scroll
+  // Sync prep scroll with gantt scroll (bidirectional)
   useEffect(() => {
     const gantt = document.getElementById('gantt-scroll');
     const prep = document.getElementById('prep-scroll');
     if (!gantt || !prep) return;
-    const handler = () => { prep.scrollLeft = gantt.scrollLeft; };
-    gantt.addEventListener('scroll', handler);
-    return () => gantt.removeEventListener('scroll', handler);
+    // Sync initial position when prep opens
+    prep.scrollLeft = gantt.scrollLeft;
+    const ganttHandler = () => {
+      if (scrollSyncRef.current) return;
+      scrollSyncRef.current = true;
+      prep.scrollLeft = gantt.scrollLeft;
+      requestAnimationFrame(() => { scrollSyncRef.current = false; });
+    };
+    const prepHandler = () => {
+      if (scrollSyncRef.current) return;
+      scrollSyncRef.current = true;
+      gantt.scrollLeft = prep.scrollLeft;
+      requestAnimationFrame(() => { scrollSyncRef.current = false; });
+    };
+    gantt.addEventListener('scroll', ganttHandler);
+    prep.addEventListener('scroll', prepHandler);
+    return () => {
+      gantt.removeEventListener('scroll', ganttHandler);
+      prep.removeEventListener('scroll', prepHandler);
+    };
   });
 
   // Memo change
@@ -218,6 +237,28 @@ export default function App() {
           <button style={tabBtnStyle(tab === 'plan')} onClick={() => setTab('plan')}>献立</button>
           <button style={tabBtnStyle(tab === 'recipe')} onClick={() => setTab('recipe')}>レシピ管理</button>
         </div>
+        {tab === 'plan' && (
+          <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <button
+              onClick={() => setColWidth(w => Math.max(60, w - 16))}
+              style={{
+                width: 30, height: 30, borderRadius: 8, border: 'none',
+                background: '#f0f0f0', color: '#3D3D3D', fontSize: 16, cursor: 'pointer',
+                fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: 'inherit',
+              }}
+            >−</button>
+            <button
+              onClick={() => setColWidth(w => Math.min(256, w + 16))}
+              style={{
+                width: 30, height: 30, borderRadius: 8, border: 'none',
+                background: '#f0f0f0', color: '#3D3D3D', fontSize: 16, cursor: 'pointer',
+                fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: 'inherit',
+              }}
+            >＋</button>
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
           <button style={iconBtnStyle(canUndo)} onClick={undo} disabled={!canUndo} title="元に戻す">
             ↩
@@ -249,12 +290,14 @@ export default function App() {
               selectedRecipeId={selectedRecipeId}
               selectedScheduleItemId={selectedScheduleItemId}
               setSelectedScheduleItemId={setSelectedScheduleItemId}
+              colWidth={colWidth}
             />
             <PrepSchedule
               dates={dates}
               scheduled={data.scheduled}
               recipes={data.recipes}
               genres={data.genres}
+              colWidth={colWidth}
             />
             <RecipeList
               recipes={data.recipes}

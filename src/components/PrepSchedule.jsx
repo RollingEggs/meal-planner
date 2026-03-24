@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { COL_WIDTH, LABEL_WIDTH } from '../constants';
+import { LABEL_WIDTH } from '../constants';
 
-export default function PrepSchedule({ dates, scheduled, recipes, genres }) {
+export default function PrepSchedule({ dates, scheduled, recipes, genres, colWidth }) {
   const [collapsed, setCollapsed] = useState(false);
 
   const todayStr = useMemo(() => {
@@ -26,7 +26,7 @@ export default function PrepSchedule({ dates, scheduled, recipes, genres }) {
       .filter((s) => dateIndex[s.prepDate] != null);
   }, [scheduled, recipes, genres, dateIndex]);
 
-  const totalWidth = dates.length * COL_WIDTH;
+  const totalWidth = dates.length * colWidth;
   const ROW_HEIGHT = 32;
 
   return (
@@ -59,7 +59,7 @@ export default function PrepSchedule({ dates, scheduled, recipes, genres }) {
               <div style={{ display: 'flex', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
                 {dates.map((d) => (
                   <div key={d} style={{
-                    width: COL_WIDTH, flexShrink: 0, borderRight: '1px solid #f5f5f5',
+                    width: colWidth, flexShrink: 0, borderRight: '1px solid #f5f5f5',
                     background: d === todayStr ? '#3D3D3D08' : 'transparent',
                   }} />
                 ))}
@@ -68,12 +68,12 @@ export default function PrepSchedule({ dates, scheduled, recipes, genres }) {
               {prepItems.map((item) => {
                 const colIdx = dateIndex[item.prepDate];
                 if (colIdx == null) return null;
-                const left = colIdx * COL_WIDTH;
+                const left = colIdx * colWidth;
                 const gc = item.genre ? item.genre.color : '#6C757D';
                 return (
                   <div key={item.id + '-prep'} style={{
                     position: 'absolute', top: 4, left: left + 2,
-                    width: COL_WIDTH - 4, height: ROW_HEIGHT - 8,
+                    width: colWidth - 4, height: ROW_HEIGHT - 8,
                     background: `repeating-linear-gradient(45deg, ${gc}08, ${gc}08 4px, ${gc}14 4px, ${gc}14 8px)`,
                     border: `1.5px dashed ${gc}88`, borderRadius: 5,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',

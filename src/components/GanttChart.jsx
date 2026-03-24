@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
-import { MEAL_TIMES, COL_WIDTH, LANE_HEIGHT, HEADER_HEIGHT, MEMO_ROW_HEIGHT, LABEL_WIDTH } from '../constants';
+import { MEAL_TIMES, LANE_HEIGHT, HEADER_HEIGHT, MEMO_ROW_HEIGHT, LABEL_WIDTH } from '../constants';
 import MemoCell from './MemoCell';
 
 const TAP_THRESHOLD_PX = 10;
@@ -11,6 +11,7 @@ export default function GanttChart({
   dates, scheduled, recipes, genres, memos,
   onMemoChange, onItemTap, onDropRecipe, onMoveItem, onResizeItem,
   selectedRecipeId, selectedScheduleItemId, setSelectedScheduleItemId,
+  colWidth,
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [resizeDrag, setResizeDrag] = useState(null);
@@ -33,7 +34,7 @@ export default function GanttChart({
     return map;
   }, [dates]);
 
-  const totalWidth = dates.length * COL_WIDTH;
+  const totalWidth = dates.length * colWidth;
 
   const getGenreColor = (recipeId) => {
     const r = recipes.find((rec) => rec.id === recipeId);
@@ -52,7 +53,7 @@ export default function GanttChart({
     const scrollLeft = scrollEl.scrollLeft;
     const x = clientX - rect.left + scrollLeft - LABEL_WIDTH;
     const y = clientY - rect.top - HEADER_HEIGHT - MEMO_ROW_HEIGHT;
-    const colIdx = Math.floor(x / COL_WIDTH);
+    const colIdx = Math.floor(x / colWidth);
     const laneIdx = Math.min(2, Math.max(0, Math.floor(y / LANE_HEIGHT)));
     const date = dates[colIdx] || null;
     const lane = MEAL_TIMES[laneIdx]?.key || null;
@@ -190,16 +191,22 @@ export default function GanttChart({
     touchRef.current = null;
   };
 
-  // Resize handle: touch drag
+  // Resize handle: touch drag with ghost preview
   const handleResizeTouchStart = (e, item) => {
     e.stopPropagation();
     const touch = e.touches[0];
-    setResizeDrag({ itemId: item.id, startX: touch.clientX, origEnd: item.endDate });
+    setResizeDrag({ itemId: item.id, startX: touch.clientX, origEnd: item.endDate, hoverDate: item.endDate });
   };
 
   const handleResizeTouchMove = (e) => {
     if (!resizeDrag) return;
     e.preventDefault();
+    const touch = e.touches[0];
+    const scrollEl = document.getElementById('gantt-scroll');
+    const { date } = getDateAndLaneFromPosition(touch.clientX, touch.clientY, scrollEl);
+    if (date) {
+      setResizeDrag((prev) => ({ ...prev, hoverDate: date }));
+    }
   };
 
   const handleResizeTouchEnd = (e) => {
@@ -212,6 +219,47 @@ export default function GanttChart({
     }
     setResizeDrag(null);
   };
+
+  // Resize handle: mouse drag with ghost preview
+  const handleResizeMouseDown = (e, item) => {
+    e.stopPropagation();
+    setResizeDrag({ itemId: item.id, startX: e.clientX, origEnd: item.endDate, hoverDate: item.endDate, mouse: true });
+  };
+
+  const handleResizeMouseMove = (e) => {
+    if (!resizeDrag || !resizeDrag.mouse) return;
+    const scrollEl = document.getElementById('gantt-scroll');
+    const { date } = getDateAndLaneFromPosition(e.clientX, e.clientY, scrollEl);
+    if (date) {
+      setResizeDrag((prev) => ({ ...prev, hoverDate: date }));
+    }
+  };
+
+  const handleResizeMouseUp = (e) => {
+    if (!resizeDrag || !resizeDrag.mouse) return;
+    const scrollEl = document.getElementById('gantt-scroll');
+    const { date } = getDateAndLaneFromPosition(e.clientX, e.clientY, scrollEl);
+    if (date) {
+      onResizeItem(resizeDrag.itemId, date);
+    }
+    setResizeDrag(null);
+  };
+
+  // Compute ghost bar dimensions for resize preview
+  const resizeGhost = useMemo(() => {
+    if (!resizeDrag || !resizeDrag.hoverDate) return null;
+    const item = scheduled.find((s) => s.id === resizeDrag.itemId);
+    if (!item) return null;
+    const startIdx = dateIndex[item.startDate];
+    const endIdx = dateIndex[resizeDrag.hoverDate];
+    if (startIdx == null || endIdx == null || endIdx < startIdx) return null;
+    const left = startIdx * colWidth;
+    const span = endIdx - startIdx + 1;
+    const width = span * colWidth - 4;
+    const laneIdx = MEAL_TIMES.findIndex((m) => m.key === (item.mealTime || 'lunch'));
+    if (laneIdx < 0) return null;
+    return { left, width, laneIdx, recipeId: item.recipeId, itemId: item.id };
+  }, [resizeDrag, scheduled, dateIndex, colWidth]);
 
   const scheduleCount = scheduled.length;
 
@@ -243,8 +291,8 @@ export default function GanttChart({
         <div
           id="gantt-scroll"
           onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
+          onMouseMove={(e) => { handleMouseMove(e); handleResizeMouseMove(e); }}
+          onMouseUp={(e) => { handleResizeMouseUp(e); handleMouseUp(e); }}
           onTouchStart={handleTouchStart}
           onTouchMove={(e) => { handleTouchMove(e); handleResizeTouchMove(e); }}
           onTouchEnd={(e) => { handleResizeTouchEnd(e); handleTouchEnd(e); }}
@@ -278,7 +326,7 @@ export default function GanttChart({
                   const isToday = d === todayStr;
                   return (
                     <div key={d} style={{
-                      width: COL_WIDTH, flexShrink: 0, textAlign: 'center',
+                      width: colWidth, flexShrink: 0, textAlign: 'center',
                       borderRight: '1px solid #f0f0f0',
                       background: isToday ? '#3D3D3D' : '#FAFAF8',
                       color: isToday ? '#fff' : dow === 0 ? '#DC2626' : dow === 6 ? '#2563EB' : '#666',
@@ -295,7 +343,7 @@ export default function GanttChart({
               {/* Memo row */}
               <div style={{ display: 'flex', height: MEMO_ROW_HEIGHT, borderBottom: '1px solid #eee' }}>
                 {dates.map((d) => (
-                  <div key={d} style={{ width: COL_WIDTH, flexShrink: 0, borderRight: '1px solid #f5f5f5', padding: '1px 2px' }}>
+                  <div key={d} style={{ width: colWidth, flexShrink: 0, borderRight: '1px solid #f5f5f5', padding: '1px 2px' }}>
                     <MemoCell dateStr={d} value={memos[d] || ''} onChange={onMemoChange} />
                   </div>
                 ))}
@@ -311,7 +359,7 @@ export default function GanttChart({
                   <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', pointerEvents: 'none' }}>
                     {dates.map((d) => (
                       <div key={d} style={{
-                        width: COL_WIDTH, flexShrink: 0, borderRight: '1px solid #f5f5f5',
+                        width: colWidth, flexShrink: 0, borderRight: '1px solid #f5f5f5',
                       }} />
                     ))}
                   </div>
@@ -323,25 +371,27 @@ export default function GanttChart({
                       const startIdx = dateIndex[item.startDate];
                       const endIdx = dateIndex[item.endDate];
                       if (startIdx == null) return null;
-                      const left = startIdx * COL_WIDTH;
+                      const left = startIdx * colWidth;
                       const span = (endIdx != null ? endIdx - startIdx : 0) + 1;
-                      const width = span * COL_WIDTH - 4;
+                      const width = span * colWidth - 4;
                       const gc = getGenreColor(item.recipeId);
                       const mtColor = mt.color;
                       const isSelected = selectedScheduleItemId === item.id;
+                      const isResizing = resizeDrag && resizeDrag.itemId === item.id;
                       return (
                         <div
                           key={item.id}
                           style={{
                             position: 'absolute', top: 3, left: left + 2,
                             width: Math.max(width, 30), height: LANE_HEIGHT - 6,
-                            background: isSelected ? gc + '38' : gc + '18',
-                            border: isSelected ? `2px solid ${gc}` : `1px solid ${gc}66`,
+                            background: isResizing ? gc + '0a' : isSelected ? gc + '38' : gc + '18',
+                            border: isResizing ? `1px dashed ${gc}44` : isSelected ? `2px solid ${gc}` : `1px solid ${gc}66`,
                             borderRadius: 6, display: 'flex', alignItems: 'center',
                             cursor: 'pointer', overflow: 'hidden', zIndex: 2,
-                            fontSize: 11, fontWeight: 600, color: gc,
-                            boxShadow: isSelected ? `0 0 6px ${gc}44` : 'none',
-                            transition: 'all 0.15s',
+                            fontSize: 11, fontWeight: 600, color: isResizing ? gc + '66' : gc,
+                            boxShadow: isSelected && !isResizing ? `0 0 6px ${gc}44` : 'none',
+                            opacity: isResizing ? 0.4 : 1,
+                            transition: isResizing ? 'none' : 'all 0.15s',
                           }}
                         >
                           {/* Meal time color line */}
@@ -355,6 +405,7 @@ export default function GanttChart({
                           {/* Resize handle */}
                           <div
                             onTouchStart={(e) => handleResizeTouchStart(e, item)}
+                            onMouseDown={(e) => handleResizeMouseDown(e, item)}
                             onClick={(e) => e.stopPropagation()}
                             style={{
                               width: 16, height: '100%', display: 'flex', alignItems: 'center',
@@ -368,6 +419,23 @@ export default function GanttChart({
                         </div>
                       );
                     })}
+
+                  {/* Resize ghost bar */}
+                  {resizeGhost && resizeGhost.laneIdx === laneI && (
+                    <div
+                      style={{
+                        position: 'absolute', top: 3, left: resizeGhost.left + 2,
+                        width: Math.max(resizeGhost.width, 30), height: LANE_HEIGHT - 6,
+                        background: getGenreColor(resizeGhost.recipeId) + '25',
+                        border: `2px dashed ${getGenreColor(resizeGhost.recipeId)}`,
+                        borderRadius: 6, zIndex: 5, pointerEvents: 'none',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 9, color: getGenreColor(resizeGhost.recipeId), fontWeight: 700,
+                      }}
+                    >
+                      {getRecipeName(resizeGhost.recipeId)}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
