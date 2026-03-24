@@ -50,10 +50,27 @@ export default function App() {
   const [selectedScheduleItemId, setSelectedScheduleItemId] = useState(null);
   const [detailItem, setDetailItem] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [prepCollapsed, setPrepCollapsed] = useState(false);
   const scrolledRef = useRef(false);
   const scrollSyncRef = useRef(false);
   const [colWidth, setColWidth] = useState(COL_WIDTH);
+
+  // Zoom while keeping currently centered date in view
+  const handleZoom = useCallback((delta) => {
+    const el = document.getElementById('gantt-scroll');
+    if (!el) {
+      setColWidth(w => Math.max(60, Math.min(256, w + delta)));
+      return;
+    }
+    const viewCenter = el.scrollLeft + (el.clientWidth - LABEL_WIDTH) / 2;
+    const centerDateIdx = viewCenter / colWidth;
+    setColWidth(w => {
+      const newW = Math.max(60, Math.min(256, w + delta));
+      requestAnimationFrame(() => {
+        el.scrollLeft = centerDateIdx * newW - (el.clientWidth - LABEL_WIDTH) / 2;
+      });
+      return newW;
+    });
+  }, [colWidth]);
 
   const dates = useMemo(() => getDateRange(today(), 14, 14), []);
 
@@ -88,7 +105,6 @@ export default function App() {
 
   // Sync prep scroll with gantt scroll (bidirectional)
   useEffect(() => {
-    if (prepCollapsed) return;
     const gantt = document.getElementById('gantt-scroll');
     const prep = document.getElementById('prep-scroll');
     if (!gantt || !prep) return;
@@ -112,7 +128,7 @@ export default function App() {
       gantt.removeEventListener('scroll', ganttHandler);
       prep.removeEventListener('scroll', prepHandler);
     };
-  }, [prepCollapsed]);
+  });
 
   // Memo change
   const handleMemoChange = useCallback((dateStr, text) => {
@@ -242,7 +258,7 @@ export default function App() {
         {tab === 'plan' && (
           <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
             <button
-              onClick={() => setColWidth(w => Math.max(60, w - 16))}
+              onClick={() => handleZoom(-16)}
               style={{
                 width: 30, height: 30, borderRadius: 8, border: 'none',
                 background: '#f0f0f0', color: '#3D3D3D', fontSize: 16, cursor: 'pointer',
@@ -251,7 +267,7 @@ export default function App() {
               }}
             >−</button>
             <button
-              onClick={() => setColWidth(w => Math.min(256, w + 16))}
+              onClick={() => handleZoom(16)}
               style={{
                 width: 30, height: 30, borderRadius: 8, border: 'none',
                 background: '#f0f0f0', color: '#3D3D3D', fontSize: 16, cursor: 'pointer',
@@ -300,8 +316,6 @@ export default function App() {
               recipes={data.recipes}
               genres={data.genres}
               colWidth={colWidth}
-              collapsed={prepCollapsed}
-              onToggleCollapsed={() => setPrepCollapsed(c => !c)}
             />
             <RecipeList
               recipes={data.recipes}
