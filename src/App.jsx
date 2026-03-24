@@ -50,6 +50,7 @@ export default function App() {
   const [selectedScheduleItemId, setSelectedScheduleItemId] = useState(null);
   const [detailItem, setDetailItem] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [prepCollapsed, setPrepCollapsed] = useState(false);
   const scrolledRef = useRef(false);
   const scrollSyncRef = useRef(false);
   const [colWidth, setColWidth] = useState(COL_WIDTH);
@@ -83,10 +84,11 @@ export default function App() {
       }
     }, 100);
     return () => clearTimeout(timer);
-  }, [dates, tab]);
+  }, [dates, tab, colWidth]);
 
   // Sync prep scroll with gantt scroll (bidirectional)
   useEffect(() => {
+    if (prepCollapsed) return;
     const gantt = document.getElementById('gantt-scroll');
     const prep = document.getElementById('prep-scroll');
     if (!gantt || !prep) return;
@@ -110,7 +112,7 @@ export default function App() {
       gantt.removeEventListener('scroll', ganttHandler);
       prep.removeEventListener('scroll', prepHandler);
     };
-  });
+  }, [prepCollapsed]);
 
   // Memo change
   const handleMemoChange = useCallback((dateStr, text) => {
@@ -298,6 +300,8 @@ export default function App() {
               recipes={data.recipes}
               genres={data.genres}
               colWidth={colWidth}
+              collapsed={prepCollapsed}
+              onToggleCollapsed={() => setPrepCollapsed(c => !c)}
             />
             <RecipeList
               recipes={data.recipes}

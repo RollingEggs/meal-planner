@@ -1,8 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import { LABEL_WIDTH } from '../constants';
+import React, { useMemo } from 'react';
+import { LABEL_WIDTH, HEADER_HEIGHT } from '../constants';
 
-export default function PrepSchedule({ dates, scheduled, recipes, genres, colWidth }) {
-  const [collapsed, setCollapsed] = useState(false);
+export default function PrepSchedule({ dates, scheduled, recipes, genres, colWidth, collapsed, onToggleCollapsed }) {
 
   const todayStr = useMemo(() => {
     const d = new Date();
@@ -31,7 +30,7 @@ export default function PrepSchedule({ dates, scheduled, recipes, genres, colWid
 
   return (
     <div style={{ marginBottom: 2 }}>
-      <div onClick={() => setCollapsed(!collapsed)} style={{
+      <div onClick={onToggleCollapsed} style={{
         display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
         background: '#F5F0E8', cursor: 'pointer', borderRadius: collapsed ? 10 : '10px 10px 0 0',
       }}>
@@ -52,9 +51,32 @@ export default function PrepSchedule({ dates, scheduled, recipes, genres, colWid
         >
           <div style={{ display: 'flex', minWidth: totalWidth + LABEL_WIDTH }}>
             <div style={{ width: LABEL_WIDTH, flexShrink: 0, position: 'sticky', left: 0, zIndex: 2, background: '#fff' }}>
+              <div style={{ height: HEADER_HEIGHT }} />
               <div style={{ height: ROW_HEIGHT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🔪</div>
             </div>
-            <div style={{ position: 'relative', flex: 1, height: Math.max(ROW_HEIGHT, ROW_HEIGHT) }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              {/* Date header */}
+              <div style={{ display: 'flex', height: HEADER_HEIGHT }}>
+                {dates.map((d) => {
+                  const dow = new Date(d).getDay();
+                  const isToday = d === todayStr;
+                  return (
+                    <div key={d} style={{
+                      width: colWidth, flexShrink: 0, textAlign: 'center',
+                      borderRight: '1px solid #f0f0f0',
+                      background: isToday ? '#3D3D3D' : '#FAFAF8',
+                      color: isToday ? '#fff' : dow === 0 ? '#DC2626' : dow === 6 ? '#2563EB' : '#666',
+                      display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                      fontSize: 11, fontWeight: isToday ? 700 : 500, lineHeight: 1.3,
+                    }}>
+                      <div style={{ fontSize: 9 }}>{['日','月','火','水','木','金','土'][dow]}</div>
+                      <div>{new Date(d).getMonth() + 1}/{new Date(d).getDate()}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Prep row */}
+              <div style={{ position: 'relative', height: ROW_HEIGHT }}>
               {/* Column grid */}
               <div style={{ display: 'flex', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
                 {dates.map((d) => (
@@ -85,6 +107,7 @@ export default function PrepSchedule({ dates, scheduled, recipes, genres, colWid
                   </div>
                 );
               })}
+              </div>
             </div>
           </div>
         </div>
