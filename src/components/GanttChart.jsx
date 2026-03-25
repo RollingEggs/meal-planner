@@ -94,19 +94,23 @@ export default function GanttChart({
       cumulativeY += laneH;
       if (i === MEAL_TIMES.length - 1) laneIdx = i;
     }
+    const laneY = y - cumulativeY;
+    const rowIdx = Math.max(0, Math.floor(laneY / LANE_HEIGHT));
     const date = dates[colIdx] || null;
     const lane = MEAL_TIMES[laneIdx]?.key || null;
-    return { date, lane, colIdx, laneIdx };
+    return { date, lane, colIdx, laneIdx, rowIdx };
   };
 
-  // Check if a tap hit any bar in the lane area
-  const getBarAtPosition = useCallback((date, lane) => {
+  // Check if a tap hit any bar in the lane area (row-aware)
+  const getBarAtPosition = useCallback((date, lane, rowIdx) => {
     if (!date || !lane) return null;
+    const itemRows = laneRowData[lane]?.itemRows || {};
     return scheduled.find((s) => {
       if ((s.mealTime || 'lunch') !== lane) return false;
-      return date >= s.startDate && date <= s.endDate;
-    });
-  }, [scheduled]);
+      if (date < s.startDate || date > s.endDate) return false;
+      return (itemRows[s.id] || 0) === rowIdx;
+    }) || null;
+  }, [scheduled, laneRowData]);
 
   // Cancel any pending long press timer
   const cancelLongPress = () => {
@@ -119,7 +123,7 @@ export default function GanttChart({
   // Handle tap on the gantt grid area (for placing/moving recipes)
   const handleGridTap = (clientX, clientY) => {
     const scrollEl = document.getElementById('gantt-scroll');
-    const { date, lane } = getDateAndLaneFromPosition(clientX, clientY, scrollEl);
+    const { date, lane, rowIdx } = getDateAndLaneFromPosition(clientX, clientY, scrollEl);
     if (!date || !lane) return;
 
     // If a recipe or schedule item is selected for placement, always allow placing
@@ -132,7 +136,7 @@ export default function GanttChart({
     }
 
     // Check if user tapped on an existing bar
-    const hitBar = getBarAtPosition(date, lane);
+    const hitBar = getBarAtPosition(date, lane, rowIdx);
 
     if (hitBar) {
       // Double tap on a bar → toggle selection
@@ -156,8 +160,8 @@ export default function GanttChart({
     cancelLongPress();
     longPressFiredRef.current = false;
     const scrollEl = document.getElementById('gantt-scroll');
-    const { date, lane } = getDateAndLaneFromPosition(clientX, clientY, scrollEl);
-    const hitBar = getBarAtPosition(date, lane);
+    const { date, lane, rowIdx } = getDateAndLaneFromPosition(clientX, clientY, scrollEl);
+    const hitBar = getBarAtPosition(date, lane, rowIdx);
     if (hitBar) {
       longPressRef.current = setTimeout(() => {
         longPressFiredRef.current = true;
