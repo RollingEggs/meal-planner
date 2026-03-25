@@ -1,10 +1,6 @@
 services:
   - type: web
     name: meal-planner
-    runtime: node
-    plan: free
+    env: static
     buildCommand: npm install && npm run build
-    startCommand: npm start
-    envVars:
-      - key: NODE_ENV
-        value: production
+    staticPublishPath: ./dist

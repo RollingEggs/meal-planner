@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { DEFAULT_GENRES, STORAGE_KEY, getDateRange, today, formatDate, addDays, genId, COL_WIDTH, LABEL_WIDTH } from './constants';
 import { useUndoRedo } from './hooks/useUndoRedo';
+import { fetchRemoteData, saveRemoteData } from './jsonbin';
 import GanttChart from './components/GanttChart';
 import PrepSchedule from './components/PrepSchedule';
 import RecipeList from './components/RecipeList';
@@ -30,23 +31,6 @@ function loadData() {
     if (raw) return parseData(JSON.parse(raw));
   } catch { /* ignore */ }
   return { ...INITIAL_DATA, genres: [...DEFAULT_GENRES] };
-}
-
-async function fetchServerData() {
-  try {
-    const res = await fetch('/api/data');
-    if (!res.ok) return null;
-    const json = await res.json();
-    return json ? parseData(json) : null;
-  } catch { return null; }
-}
-
-function saveToServer(data) {
-  fetch('/api/data', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  }).catch(() => {});
 }
 
 function cleanOldData(data) {
@@ -94,31 +78,31 @@ export default function App() {
 
   const dates = useMemo(() => getDateRange(today(), 14, 14), []);
 
-  // Fetch from server on mount
+  // Fetch from JSONBin on mount
   useEffect(() => {
     if (initialSyncDoneRef.current) return;
     initialSyncDoneRef.current = true;
     setSyncStatus('syncing');
-    fetchServerData().then((serverData) => {
-      if (serverData) {
-        const cleaned = cleanOldData(serverData);
+    fetchRemoteData().then((remoteData) => {
+      if (remoteData && (remoteData.recipes?.length || remoteData.scheduled?.length)) {
+        const cleaned = cleanOldData(parseData(remoteData));
         resetHistory(cleaned);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
         setSyncStatus('synced');
       } else {
-        // Server has no data — push local data up
+        // Remote has no data — push local data up
         const local = cleanOldData(loadData());
-        saveToServer(local);
+        saveRemoteData(local);
         setSyncStatus('synced');
       }
     });
   }, [resetHistory]);
 
-  // Save to localStorage + server
+  // Save to localStorage + JSONBin
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     if (initialSyncDoneRef.current) {
-      saveToServer(data);
+      saveRemoteData(data);
     }
   }, [data]);
 
