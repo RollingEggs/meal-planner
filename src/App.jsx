@@ -15,20 +15,38 @@ const INITIAL_DATA = {
   memos: {},
 };
 
+function parseData(parsed) {
+  return {
+    recipes: parsed.recipes || [],
+    scheduled: parsed.scheduled || [],
+    genres: parsed.genres && parsed.genres.length > 0 ? parsed.genres : [...DEFAULT_GENRES],
+    memos: parsed.memos || {},
+  };
+}
+
 function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return {
-        recipes: parsed.recipes || [],
-        scheduled: parsed.scheduled || [],
-        genres: parsed.genres && parsed.genres.length > 0 ? parsed.genres : [...DEFAULT_GENRES],
-        memos: parsed.memos || {},
-      };
-    }
+    if (raw) return parseData(JSON.parse(raw));
   } catch { /* ignore */ }
   return { ...INITIAL_DATA, genres: [...DEFAULT_GENRES] };
+}
+
+async function fetchServerData() {
+  try {
+    const res = await fetch('/api/data');
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json ? parseData(json) : null;
+  } catch { return null; }
+}
+
+function saveToServer(data) {
+  fetch('/api/data', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }).catch(() => {});
 }
 
 function cleanOldData(data) {
@@ -53,6 +71,8 @@ export default function App() {
   const scrolledRef = useRef(false);
   const scrollSyncRef = useRef(false);
   const [colWidth, setColWidth] = useState(COL_WIDTH);
+  const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | synced | offline
+  const initialSyncDoneRef = useRef(false);
 
   // Zoom while keeping currently centered date in view
   const handleZoom = useCallback((delta) => {
@@ -74,9 +94,32 @@ export default function App() {
 
   const dates = useMemo(() => getDateRange(today(), 14, 14), []);
 
-  // Save to localStorage
+  // Fetch from server on mount
+  useEffect(() => {
+    if (initialSyncDoneRef.current) return;
+    initialSyncDoneRef.current = true;
+    setSyncStatus('syncing');
+    fetchServerData().then((serverData) => {
+      if (serverData) {
+        const cleaned = cleanOldData(serverData);
+        resetHistory(cleaned);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+        setSyncStatus('synced');
+      } else {
+        // Server has no data — push local data up
+        const local = cleanOldData(loadData());
+        saveToServer(local);
+        setSyncStatus('synced');
+      }
+    });
+  }, [resetHistory]);
+
+  // Save to localStorage + server
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    if (initialSyncDoneRef.current) {
+      saveToServer(data);
+    }
   }, [data]);
 
   // Reset scroll flag when switching back to plan tab
