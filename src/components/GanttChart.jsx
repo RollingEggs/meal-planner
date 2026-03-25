@@ -122,6 +122,15 @@ export default function GanttChart({
     const { date, lane } = getDateAndLaneFromPosition(clientX, clientY, scrollEl);
     if (!date || !lane) return;
 
+    // If a recipe or schedule item is selected for placement, always allow placing
+    if (selectedRecipeId) {
+      onDropRecipe(selectedRecipeId, date, lane);
+      return;
+    } else if (selectedScheduleItemId) {
+      onMoveItem(selectedScheduleItemId, date, lane);
+      return;
+    }
+
     // Check if user tapped on an existing bar
     const hitBar = getBarAtPosition(date, lane);
 
@@ -139,16 +148,6 @@ export default function GanttChart({
       } else {
         lastBarTapRef.current = { id: hitBar.id, time: now };
       }
-      return;
-    }
-
-    // Tapped on empty area
-    if (selectedRecipeId) {
-      // Place new recipe from list
-      onDropRecipe(selectedRecipeId, date, lane);
-    } else if (selectedScheduleItemId) {
-      // Move selected schedule item
-      onMoveItem(selectedScheduleItemId, date, lane);
     }
   };
 
