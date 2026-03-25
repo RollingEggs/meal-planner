@@ -28,6 +28,22 @@ export default function PrepSchedule({ dates, scheduled, recipes, genres, colWid
   const totalWidth = dates.length * colWidth;
   const ROW_HEIGHT = 32;
 
+  // Compute row indices for overlapping prep items (same prepDate)
+  const { maxRows, itemRows } = useMemo(() => {
+    const dateGroups = {};
+    prepItems.forEach((item) => {
+      if (!dateGroups[item.prepDate]) dateGroups[item.prepDate] = [];
+      dateGroups[item.prepDate].push(item.id);
+    });
+    const rows = {};
+    let max = 1;
+    Object.values(dateGroups).forEach((ids) => {
+      ids.forEach((id, i) => { rows[id] = i; });
+      if (ids.length > max) max = ids.length;
+    });
+    return { maxRows: max, itemRows: rows };
+  }, [prepItems]);
+
   return (
     <div style={{ marginBottom: 2 }}>
       <div style={{
@@ -49,10 +65,10 @@ export default function PrepSchedule({ dates, scheduled, recipes, genres, colWid
       >
         <div style={{ display: 'flex', minWidth: totalWidth + LABEL_WIDTH }}>
           <div style={{ width: LABEL_WIDTH, flexShrink: 0, position: 'sticky', left: 0, zIndex: 2, background: '#fff' }}>
-            <div style={{ height: ROW_HEIGHT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🔪</div>
+            <div style={{ height: ROW_HEIGHT * maxRows, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🔪</div>
           </div>
           <div style={{ position: 'relative', flex: 1 }}>
-            <div style={{ position: 'relative', height: ROW_HEIGHT }}>
+            <div style={{ position: 'relative', height: ROW_HEIGHT * maxRows }}>
               {/* Column grid */}
               <div style={{ display: 'flex', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
                 {dates.map((d) => (
@@ -68,9 +84,10 @@ export default function PrepSchedule({ dates, scheduled, recipes, genres, colWid
                 if (colIdx == null) return null;
                 const left = colIdx * colWidth;
                 const gc = item.genre ? item.genre.color : '#6C757D';
+                const rowIdx = itemRows[item.id] || 0;
                 return (
                   <div key={item.id + '-prep'} style={{
-                    position: 'absolute', top: 4, left: left + 2,
+                    position: 'absolute', top: rowIdx * ROW_HEIGHT + 4, left: left + 2,
                     width: colWidth - 4, height: ROW_HEIGHT - 8,
                     background: `repeating-linear-gradient(45deg, ${gc}08, ${gc}08 4px, ${gc}14 4px, ${gc}14 8px)`,
                     border: `1.5px dashed ${gc}88`, borderRadius: 5,

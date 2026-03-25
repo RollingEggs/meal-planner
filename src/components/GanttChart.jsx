@@ -36,6 +36,38 @@ export default function GanttChart({
 
   const totalWidth = dates.length * colWidth;
 
+  // Compute row indices for overlapping bars within each lane
+  const laneRowData = useMemo(() => {
+    const result = {};
+    MEAL_TIMES.forEach((mt) => {
+      const laneItems = scheduled
+        .filter((s) => (s.mealTime || 'lunch') === mt.key)
+        .sort((a, b) => a.startDate.localeCompare(b.startDate));
+      const rows = [];
+      const itemRows = {};
+      laneItems.forEach((item) => {
+        let placed = false;
+        for (let r = 0; r < rows.length; r++) {
+          const overlaps = rows[r].some((existing) =>
+            item.startDate <= existing.endDate && item.endDate >= existing.startDate
+          );
+          if (!overlaps) {
+            rows[r].push(item);
+            itemRows[item.id] = r;
+            placed = true;
+            break;
+          }
+        }
+        if (!placed) {
+          rows.push([item]);
+          itemRows[item.id] = rows.length - 1;
+        }
+      });
+      result[mt.key] = { maxRows: Math.max(1, rows.length), itemRows };
+    });
+    return result;
+  }, [scheduled]);
+
   const getGenreColor = (recipeId) => {
     const r = recipes.find((rec) => rec.id === recipeId);
     const g = r ? genres.find((gen) => gen.id === r.genreId) : null;
@@ -54,7 +86,14 @@ export default function GanttChart({
     const x = clientX - rect.left + scrollLeft - LABEL_WIDTH;
     const y = clientY - rect.top - HEADER_HEIGHT - MEMO_ROW_HEIGHT;
     const colIdx = Math.floor(x / colWidth);
-    const laneIdx = Math.min(2, Math.max(0, Math.floor(y / LANE_HEIGHT)));
+    let laneIdx = 0;
+    let cumulativeY = 0;
+    for (let i = 0; i < MEAL_TIMES.length; i++) {
+      const laneH = LANE_HEIGHT * laneRowData[MEAL_TIMES[i].key].maxRows;
+      if (y < cumulativeY + laneH) { laneIdx = i; break; }
+      cumulativeY += laneH;
+      if (i === MEAL_TIMES.length - 1) laneIdx = i;
+    }
     const date = dates[colIdx] || null;
     const lane = MEAL_TIMES[laneIdx]?.key || null;
     return { date, lane, colIdx, laneIdx };
@@ -258,8 +297,9 @@ export default function GanttChart({
     const width = span * colWidth - 4;
     const laneIdx = MEAL_TIMES.findIndex((m) => m.key === (item.mealTime || 'lunch'));
     if (laneIdx < 0) return null;
-    return { left, width, laneIdx, recipeId: item.recipeId, itemId: item.id };
-  }, [resizeDrag, scheduled, dateIndex, colWidth]);
+    const rowIdx = laneRowData[MEAL_TIMES[laneIdx].key]?.itemRows[item.id] || 0;
+    return { left, width, laneIdx, rowIdx, recipeId: item.recipeId, itemId: item.id };
+  }, [resizeDrag, scheduled, dateIndex, colWidth, laneRowData]);
 
   const scheduleCount = scheduled.length;
 
@@ -309,7 +349,7 @@ export default function GanttChart({
               <div style={{ height: MEMO_ROW_HEIGHT }} />
               {MEAL_TIMES.map((mt) => (
                 <div key={mt.key} style={{
-                  height: LANE_HEIGHT, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  height: LANE_HEIGHT * laneRowData[mt.key].maxRows, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, color: mt.color + '88', fontWeight: 600, flexDirection: 'column', lineHeight: 1,
                 }}>
                   <span style={{ fontSize: 14 }}>{mt.icon}</span>
@@ -350,9 +390,12 @@ export default function GanttChart({
               </div>
 
               {/* Lanes */}
-              {MEAL_TIMES.map((mt, laneI) => (
+              {MEAL_TIMES.map((mt, laneI) => {
+                const laneMaxRows = laneRowData[mt.key].maxRows;
+                const laneItemRows = laneRowData[mt.key].itemRows;
+                return (
                 <div key={mt.key} style={{
-                  height: LANE_HEIGHT, position: 'relative',
+                  height: LANE_HEIGHT * laneMaxRows, position: 'relative',
                   borderBottom: `2px solid ${mt.color}22`,
                 }}>
                   {/* Column grid lines */}
@@ -378,11 +421,12 @@ export default function GanttChart({
                       const mtColor = mt.color;
                       const isSelected = selectedScheduleItemId === item.id;
                       const isResizing = resizeDrag && resizeDrag.itemId === item.id;
+                      const rowIdx = laneItemRows[item.id] || 0;
                       return (
                         <div
                           key={item.id}
                           style={{
-                            position: 'absolute', top: 3, left: left + 2,
+                            position: 'absolute', top: rowIdx * LANE_HEIGHT + 3, left: left + 2,
                             width: Math.max(width, 30), height: LANE_HEIGHT - 6,
                             background: isResizing ? gc + '0a' : isSelected ? gc + '38' : gc + '18',
                             border: isResizing ? `1px dashed ${gc}44` : isSelected ? `2px solid ${gc}` : `1px solid ${gc}66`,
@@ -424,7 +468,7 @@ export default function GanttChart({
                   {resizeGhost && resizeGhost.laneIdx === laneI && (
                     <div
                       style={{
-                        position: 'absolute', top: 3, left: resizeGhost.left + 2,
+                        position: 'absolute', top: resizeGhost.rowIdx * LANE_HEIGHT + 3, left: resizeGhost.left + 2,
                         width: Math.max(resizeGhost.width, 30), height: LANE_HEIGHT - 6,
                         background: getGenreColor(resizeGhost.recipeId) + '25',
                         border: `2px dashed ${getGenreColor(resizeGhost.recipeId)}`,
@@ -437,7 +481,8 @@ export default function GanttChart({
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
