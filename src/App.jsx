@@ -57,6 +57,7 @@ export default function App() {
   const [colWidth, setColWidth] = useState(COL_WIDTH);
   const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | synced | offline
   const initialSyncDoneRef = useRef(false);
+  const syncCompletedRef = useRef(false);
 
   // Zoom while keeping currently centered date in view
   const handleZoom = useCallback((delta) => {
@@ -95,13 +96,14 @@ export default function App() {
         saveRemoteData(local);
         setSyncStatus('synced');
       }
+      syncCompletedRef.current = true;
     });
   }, [resetHistory]);
 
   // Save to localStorage + JSONBin
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    if (initialSyncDoneRef.current) {
+    if (syncCompletedRef.current) {
       saveRemoteData(data);
     }
   }, [data]);
