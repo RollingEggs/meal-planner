@@ -58,6 +58,8 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | synced | offline
   const initialSyncDoneRef = useRef(false);
   const syncCompletedRef = useRef(false);
+  const lastSyncedDataRef = useRef(null);
+  const dataRef = useRef(data);
 
   // Zoom while keeping currently centered date in view
   const handleZoom = useCallback((delta) => {
@@ -79,6 +81,9 @@ export default function App() {
 
   const dates = useMemo(() => getDateRange(today(), 14, 14), []);
 
+  // Keep dataRef in sync
+  useEffect(() => { dataRef.current = data; }, [data]);
+
   // Fetch from JSONBin on mount
   useEffect(() => {
     if (initialSyncDoneRef.current) return;
@@ -89,11 +94,13 @@ export default function App() {
         const cleaned = cleanOldData(parseData(remoteData));
         resetHistory(cleaned);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+        lastSyncedDataRef.current = cleaned;
         setSyncStatus('synced');
       } else {
         // Remote has no data — push local data up
         const local = cleanOldData(loadData());
         saveRemoteData(local);
+        lastSyncedDataRef.current = local;
         setSyncStatus('synced');
       }
       syncCompletedRef.current = true;
@@ -105,6 +112,7 @@ export default function App() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     if (syncCompletedRef.current) {
       saveRemoteData(data);
+      lastSyncedDataRef.current = data;
     }
   }, [data]);
 
@@ -158,6 +166,32 @@ export default function App() {
       prep.removeEventListener('scroll', prepHandler);
     };
   });
+
+  // Fetch latest from remote (manual refresh + tab visibility)
+  const syncRemoteNow = useCallback(async () => {
+    if (!syncCompletedRef.current) return;
+    setSyncStatus('syncing');
+    const remoteData = await fetchRemoteData();
+    if (!remoteData) {
+      setSyncStatus('offline');
+      return;
+    }
+    const cleaned = cleanOldData(parseData(remoteData));
+    if (JSON.stringify(cleaned) !== JSON.stringify(lastSyncedDataRef.current)) {
+      resetHistory(cleaned);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+      lastSyncedDataRef.current = cleaned;
+    }
+    setSyncStatus('synced');
+  }, [resetHistory]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') syncRemoteNow();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [syncRemoteNow]);
 
   // Memo change
   const handleMemoChange = useCallback((dateStr, text) => {
@@ -314,6 +348,9 @@ export default function App() {
           <button style={iconBtnStyle(canRedo)} onClick={redo} disabled={!canRedo} title="やり直す">
             ↪
             {redoCount > 0 && <span style={badgeStyle}>{redoCount}</span>}
+          </button>
+          <button style={iconBtnStyle(syncStatus !== 'syncing')} onClick={syncRemoteNow} disabled={syncStatus === 'syncing'} title="最新に更新">
+            {syncStatus === 'syncing' ? '⏳' : '🔄'}
           </button>
           <button style={iconBtnStyle(true)} onClick={() => setShowSettings(true)} title="設定">⚙</button>
         </div>
