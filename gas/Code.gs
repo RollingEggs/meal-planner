@@ -15,7 +15,9 @@ function doGet() {
 
 function doPost(e) {
   try {
-    const data = JSON.parse(e.postData.contents);
+    // URLSearchParams 形式 (payload=...) と生 JSON の両方に対応
+    const raw = (e.parameter && e.parameter.payload) ? e.parameter.payload : e.postData.contents;
+    const data = JSON.parse(raw);
     writeSheet('recipes', ['id', 'name', 'genreId'], data.recipes || []);
     writeSheet('genres', ['id', 'name', 'color'], data.genres || []);
     writeSheet('scheduled', ['id', 'recipeId', 'startDate', 'endDate', 'prepDate', 'mealTime', 'noPrep'],

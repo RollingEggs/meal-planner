@@ -31,10 +31,9 @@ export async function fetchRemoteData() {
 export function saveRemoteData(data) {
   const url = getSyncUrl();
   if (!url) return;
-  // Content-Type を明示しない文字列 body は text/plain 扱いになり
-  // CORS preflight が不要。GAS がリダイレクトしても body が届く。
+  // application/x-www-form-urlencoded は CORS preflight 不要で GAS が確実に受け取れる
   fetch(url, {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: new URLSearchParams({ payload: JSON.stringify(data) }),
   }).catch(() => {});
 }
