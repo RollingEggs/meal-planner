@@ -349,9 +349,6 @@ export default function App() {
             ↪
             {redoCount > 0 && <span style={badgeStyle}>{redoCount}</span>}
           </button>
-          <button style={iconBtnStyle(syncStatus !== 'syncing')} onClick={syncRemoteNow} disabled={syncStatus === 'syncing'} title="最新に更新">
-            {syncStatus === 'syncing' ? '⏳' : '🔄'}
-          </button>
           <button style={iconBtnStyle(true)} onClick={() => setShowSettings(true)} title="設定">⚙</button>
         </div>
       </div>
