@@ -4,7 +4,7 @@ const MASTER_KEY = '$2a$10$fMkAa3oegDr0V/5Y8w7tdObP.2/VvaNlB/RCSAz/guqFWmMXuNIsG
 
 export async function fetchRemoteData() {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 5000);
+  const timer = setTimeout(() => controller.abort(), 3000);
   try {
     const res = await fetch(`${JSONBIN_API}/${BIN_ID}/latest`, {
       headers: { 'X-Master-Key': MASTER_KEY },
