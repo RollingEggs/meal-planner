@@ -84,7 +84,7 @@ export default function App() {
   // Keep dataRef in sync
   useEffect(() => { dataRef.current = data; }, [data]);
 
-  // Fetch from JSONBin on mount
+  // Fetch from remote on mount
   useEffect(() => {
     if (initialSyncDoneRef.current) return;
     initialSyncDoneRef.current = true;
@@ -107,7 +107,7 @@ export default function App() {
     });
   }, [resetHistory]);
 
-  // Save to localStorage + JSONBin
+  // Save to localStorage + remote
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     if (syncCompletedRef.current) {
