@@ -107,13 +107,16 @@ export default function App() {
     });
   }, [resetHistory]);
 
-  // Save to localStorage + JSONBin
+  // Save to localStorage + remote
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    if (syncCompletedRef.current) {
+    if (!syncCompletedRef.current) return;
+    // Debounce remote writes to prevent race conditions when edits happen rapidly
+    const timer = setTimeout(() => {
       saveRemoteData(data);
       lastSyncedDataRef.current = data;
-    }
+    }, 500);
+    return () => clearTimeout(timer);
   }, [data]);
 
   // Reset scroll flag when switching back to plan tab
