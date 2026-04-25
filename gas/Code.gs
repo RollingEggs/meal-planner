@@ -14,24 +14,29 @@ function doGet() {
 }
 
 function doPost(e) {
-  const data = JSON.parse(e.postData.contents);
-
-  writeSheet('recipes', ['id', 'name', 'genreId'], data.recipes || []);
-  writeSheet('genres', ['id', 'name', 'color'], data.genres || []);
-  writeSheet('scheduled', ['id', 'recipeId', 'startDate', 'endDate', 'prepDate', 'mealTime', 'noPrep'],
-    (data.scheduled || []).map(s => ({ ...s, prepDate: s.prepDate || '', noPrep: s.noPrep ? 'TRUE' : 'FALSE' }))
-  );
-  writeSheet('memos', ['date', 'text'],
-    Object.entries(data.memos || {}).map(([date, text]) => ({ date, text }))
-  );
-
-  return ContentService
-    .createTextOutput(JSON.stringify({ ok: true }))
-    .setMimeType(ContentService.MimeType.JSON);
+  try {
+    const data = JSON.parse(e.postData.contents);
+    writeSheet('recipes', ['id', 'name', 'genreId'], data.recipes || []);
+    writeSheet('genres', ['id', 'name', 'color'], data.genres || []);
+    writeSheet('scheduled', ['id', 'recipeId', 'startDate', 'endDate', 'prepDate', 'mealTime', 'noPrep'],
+      (data.scheduled || []).map(s => ({ ...s, prepDate: s.prepDate || '', noPrep: s.noPrep ? 'TRUE' : 'FALSE' }))
+    );
+    writeSheet('memos', ['date', 'text'],
+      Object.entries(data.memos || {}).map(([date, text]) => ({ date, text }))
+    );
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: true }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 function readSheet(name, cols) {
   const sheet = SS.getSheetByName(name);
+  if (!sheet) return [];
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
   return sheet.getRange(2, 1, lastRow - 1, cols.length).getValues()
@@ -41,6 +46,7 @@ function readSheet(name, cols) {
 
 function writeSheet(name, cols, rows) {
   const sheet = SS.getSheetByName(name);
+  if (!sheet) return;
   const lastRow = sheet.getLastRow();
   if (lastRow > 1) sheet.getRange(2, 1, lastRow - 1, cols.length).clearContent();
   if (!rows.length) return;
