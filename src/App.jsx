@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { DEFAULT_GENRES, STORAGE_KEY, getDateRange, today, formatDate, addDays, genId, COL_WIDTH, LABEL_WIDTH } from './constants';
 import { useUndoRedo } from './hooks/useUndoRedo';
-import { fetchRemoteData, saveRemoteData } from './sheets';
+import { fetchRemoteData, saveRemoteData, getSyncUrl } from './sheets';
 import GanttChart from './components/GanttChart';
 import PrepSchedule from './components/PrepSchedule';
 import RecipeList from './components/RecipeList';
@@ -51,7 +51,7 @@ export default function App() {
   const [selectedRecipeId, setSelectedRecipeId] = useState(null);
   const [selectedScheduleItemId, setSelectedScheduleItemId] = useState(null);
   const [detailItem, setDetailItem] = useState(null);
-  const [showSettings, setShowSettings] = useState(false);
+  const [showSettings, setShowSettings] = useState(() => !getSyncUrl());
   const scrolledRef = useRef(false);
   const scrollSyncRef = useRef(false);
   const [colWidth, setColWidth] = useState(COL_WIDTH);

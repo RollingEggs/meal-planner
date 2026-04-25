@@ -1,12 +1,24 @@
-// Apps Script Web App URL — デプロイ後に設定
-const APPS_SCRIPT_URL = '';
+const SYNC_URL_KEY = 'meal-planner-sync-url';
+
+export function getSyncUrl() {
+  return localStorage.getItem(SYNC_URL_KEY) || '';
+}
+
+export function setSyncUrl(url) {
+  if (url) {
+    localStorage.setItem(SYNC_URL_KEY, url);
+  } else {
+    localStorage.removeItem(SYNC_URL_KEY);
+  }
+}
 
 export async function fetchRemoteData() {
-  if (!APPS_SCRIPT_URL) return null;
+  const url = getSyncUrl();
+  if (!url) return null;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 1000);
   try {
-    const res = await fetch(APPS_SCRIPT_URL, { signal: controller.signal });
+    const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timer);
     if (!res.ok) return null;
     return await res.json();
@@ -17,9 +29,10 @@ export async function fetchRemoteData() {
 }
 
 export function saveRemoteData(data) {
-  if (!APPS_SCRIPT_URL) return;
+  const url = getSyncUrl();
+  if (!url) return;
   // mode: 'no-cors' で CORS preflight を回避（レスポンスは読めないが保存は成功する）
-  fetch(APPS_SCRIPT_URL, {
+  fetch(url, {
     method: 'POST',
     mode: 'no-cors',
     body: JSON.stringify(data),
