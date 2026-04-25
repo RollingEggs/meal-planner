@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { DEFAULT_GENRES, STORAGE_KEY, getDateRange, today, formatDate, addDays, genId, COL_WIDTH, LABEL_WIDTH } from './constants';
 import { useUndoRedo } from './hooks/useUndoRedo';
-import { fetchRemoteData, saveRemoteData } from './jsonbin';
+import { fetchRemoteData, saveRemoteData } from './sheets';
 import GanttChart from './components/GanttChart';
 import PrepSchedule from './components/PrepSchedule';
 import RecipeList from './components/RecipeList';
