@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { DEFAULT_GENRES, STORAGE_KEY, getDateRange, today, addDays, genId, COL_WIDTH, LABEL_WIDTH } from './constants';
 import { useUndoRedo } from './hooks/useUndoRedo';
-import { fetchRemoteData, saveRemoteData, getSyncUrl } from './sheets';
+import { fetchRemoteData, saveRemoteData, isSyncConfigured } from './sheets';
 import GanttChart from './components/GanttChart';
 import PrepSchedule from './components/PrepSchedule';
 import RecipeList from './components/RecipeList';
@@ -51,11 +51,11 @@ export default function App() {
   const [selectedRecipeId, setSelectedRecipeId] = useState(null);
   const [selectedScheduleItemId, setSelectedScheduleItemId] = useState(null);
   const [detailItem, setDetailItem] = useState(null);
-  const [showSettings, setShowSettings] = useState(() => !getSyncUrl());
+  const [showSettings, setShowSettings] = useState(() => !isSyncConfigured());
   const scrolledRef = useRef(false);
   const scrollSyncRef = useRef(false);
   const [colWidth, setColWidth] = useState(COL_WIDTH);
-  const [syncStatus, setSyncStatus] = useState(() => getSyncUrl() ? 'syncing' : 'idle'); // idle | syncing | synced | offline
+  const [syncStatus, setSyncStatus] = useState(() => isSyncConfigured() ? 'syncing' : 'idle'); // idle | syncing | synced | offline
   const initialSyncDoneRef = useRef(false);
   const syncCompletedRef = useRef(false);
   const lastSyncedDataRef = useRef(null);

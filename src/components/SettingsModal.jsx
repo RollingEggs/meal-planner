@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { getSyncUrl, setSyncUrl } from '../sheets';
+import { getJsonBinConfig, setJsonBinConfig } from '../sheets';
 
 export default function SettingsModal({ data, onImport, onClose }) {
   const [jsonText, setJsonText] = useState('');
   const [mode, setMode] = useState('sync');
-  const [syncUrl, setSyncUrlState] = useState(getSyncUrl());
+  const cfg = getJsonBinConfig();
+  const [binId, setBinId] = useState(cfg.binId);
+  const [apiKey, setApiKey] = useState(cfg.apiKey);
   const [saved, setSaved] = useState(false);
-  const [urlError, setUrlError] = useState('');
 
   const exportData = JSON.stringify(data, null, 2);
 
@@ -40,14 +41,8 @@ export default function SettingsModal({ data, onImport, onClose }) {
     });
   };
 
-  const handleSaveUrl = () => {
-    const trimmed = syncUrl.trim();
-    if (trimmed && !trimmed.startsWith('https://')) {
-      setUrlError('URL は https:// で始まる必要があります');
-      return;
-    }
-    setUrlError('');
-    setSyncUrl(trimmed);
+  const handleSave = () => {
+    setJsonBinConfig(binId.trim(), apiKey.trim());
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -60,6 +55,12 @@ export default function SettingsModal({ data, onImport, onClose }) {
     color: active ? '#fff' : '#666',
     fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
   });
+
+  const inputStyle = {
+    width: '100%', padding: '10px 12px', border: '1px solid #ddd',
+    borderRadius: 8, fontSize: 13, fontFamily: 'inherit',
+    boxSizing: 'border-box',
+  };
 
   const overlay = {
     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -84,30 +85,34 @@ export default function SettingsModal({ data, onImport, onClose }) {
         {mode === 'sync' && (
           <>
             <p style={{ fontSize: 12, color: '#666', marginBottom: 10, lineHeight: 1.6 }}>
-              Google Apps Script の Web アプリ URL を入力してください。
+              JSONBin.io の Bin ID と Master Key を入力してください。
               このデバイスのみに保存され、コードには含まれません。
             </p>
-            <input
-              type="url"
-              value={syncUrl}
-              onChange={(e) => { setSyncUrlState(e.target.value); setSaved(false); setUrlError(''); }}
-              placeholder="https://script.google.com/macros/s/..."
-              style={{
-                width: '100%', padding: '10px 12px',
-                border: `1px solid ${urlError ? '#DC2626' : '#ddd'}`,
-                borderRadius: 8, fontSize: 13, fontFamily: 'inherit',
-                boxSizing: 'border-box',
-              }}
-            />
-            {urlError && (
-              <div style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>{urlError}</div>
-            )}
-            <button onClick={handleSaveUrl} style={{
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>Bin ID</div>
+              <input
+                value={binId}
+                onChange={(e) => { setBinId(e.target.value); setSaved(false); }}
+                placeholder="例: 6xxxxxxxxxxxxxxxxx"
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>Master Key</div>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => { setApiKey(e.target.value); setSaved(false); }}
+                placeholder="$2a$10$..."
+                style={inputStyle}
+              />
+            </div>
+            <button onClick={handleSave} style={{
               width: '100%', padding: '10px 0',
               background: saved ? '#2D6A4F' : '#3D3D3D',
               color: '#fff', border: 'none', borderRadius: 8,
               fontSize: 14, fontWeight: 700, cursor: 'pointer',
-              fontFamily: 'inherit', marginTop: 8, transition: 'background 0.2s',
+              fontFamily: 'inherit', marginTop: 4, transition: 'background 0.2s',
             }}>
               {saved ? '✓ 保存しました' : '保存'}
             </button>
