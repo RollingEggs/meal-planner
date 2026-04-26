@@ -19,6 +19,8 @@ export default function RecipeManager({ data, onUpdate }) {
   const [editGenre, setEditGenre] = useState('');
   const [confirmDeleteRecipeId, setConfirmDeleteRecipeId] = useState(null);
   const [confirmDeleteGenreId, setConfirmDeleteGenreId] = useState(null);
+  const [editingGenre, setEditingGenre] = useState(null); // { id, name, color }
+
 
   const genId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
@@ -61,6 +63,18 @@ export default function RecipeManager({ data, onUpdate }) {
     onUpdate({ ...data, genres: [...genres, newG] });
     setNewGenreName('');
     setShowGenreAdd(false);
+  };
+
+  const saveEditGenre = () => {
+    if (!editingGenre || !editingGenre.name.trim()) return;
+    onUpdate({
+      ...data,
+      genres: genres.map((g) => g.id === editingGenre.id
+        ? { ...g, name: editingGenre.name.trim(), color: editingGenre.color }
+        : g
+      ),
+    });
+    setEditingGenre(null);
   };
 
   const confirmDeleteGenre = () => {
@@ -154,9 +168,12 @@ export default function RecipeManager({ data, onUpdate }) {
             }}>
               <span style={{ width: 10, height: 10, borderRadius: '50%', background: g.color, display: 'inline-block' }} />
               <span style={{ fontSize: 12, color: g.color, fontWeight: 600 }}>{g.name}</span>
+              <span onClick={() => setEditingGenre({ id: g.id, name: g.name, color: g.color })} style={{
+                cursor: 'pointer', fontSize: 11, color: '#aaa', marginLeft: 2, lineHeight: 1,
+              }}>✎</span>
               {g.id !== 'g10' && g.name !== 'その他' && (
                 <span onClick={() => setConfirmDeleteGenreId(g.id)} style={{
-                  cursor: 'pointer', fontSize: 14, color: '#999', marginLeft: 2, lineHeight: 1,
+                  cursor: 'pointer', fontSize: 14, color: '#999', lineHeight: 1,
                 }}>×</span>
               )}
             </div>
@@ -215,6 +232,35 @@ export default function RecipeManager({ data, onUpdate }) {
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={saveEdit} style={{ ...btnStyle, flex: 1, background: '#3D3D3D', color: '#fff' }}>保存</button>
               <button onClick={() => setEditingRecipe(null)} style={{ ...btnStyle, flex: 1, background: '#eee', color: '#555' }}>キャンセル</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ジャンル編集モーダル */}
+      {editingGenre && (
+        <div style={confirmModalStyle} onClick={() => setEditingGenre(null)}>
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 360,
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>ジャンルを編集</div>
+            <input
+              value={editingGenre.name}
+              onChange={(e) => setEditingGenre({ ...editingGenre, name: e.target.value })}
+              style={{ ...inputStyle, marginBottom: 12 }}
+              onKeyDown={(e) => { if (e.key === 'Enter') saveEditGenre(); }}
+            />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+              {PALETTE.map((c) => (
+                <div key={c} onClick={() => setEditingGenre({ ...editingGenre, color: c })} style={{
+                  width: 28, height: 28, borderRadius: 8, background: c, cursor: 'pointer',
+                  border: editingGenre.color === c ? '3px solid #333' : '2px solid transparent',
+                }} />
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={saveEditGenre} style={{ ...btnStyle, flex: 1, background: editingGenre.color, color: '#fff' }}>保存</button>
+              <button onClick={() => setEditingGenre(null)} style={{ ...btnStyle, flex: 1, background: '#eee', color: '#555' }}>キャンセル</button>
             </div>
           </div>
         </div>
