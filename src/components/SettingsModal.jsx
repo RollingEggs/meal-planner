@@ -6,31 +6,48 @@ export default function SettingsModal({ data, onImport, onClose }) {
   const [mode, setMode] = useState('sync');
   const [syncUrl, setSyncUrlState] = useState(getSyncUrl());
   const [saved, setSaved] = useState(false);
+  const [urlError, setUrlError] = useState('');
 
   const exportData = JSON.stringify(data, null, 2);
 
   const handleImport = () => {
     try {
       const parsed = JSON.parse(jsonText);
-      if (parsed && parsed.recipes && parsed.genres) {
-        onImport(parsed);
-        onClose();
-      } else {
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
         alert('データ形式が正しくありません');
+        return;
       }
+      if (!Array.isArray(parsed.recipes) || !Array.isArray(parsed.genres)) {
+        alert('データ形式が正しくありません（recipes と genres が必要です）');
+        return;
+      }
+      onImport(parsed);
+      onClose();
     } catch {
       alert('JSONの解析に失敗しました');
     }
   };
 
   const handleCopy = () => {
+    if (!navigator.clipboard) {
+      alert('このブラウザはクリップボードに対応していません。テキストを手動で選択してコピーしてください。');
+      return;
+    }
     navigator.clipboard.writeText(exportData).then(() => {
       alert('コピーしました');
-    }).catch(() => {});
+    }).catch(() => {
+      alert('コピーに失敗しました。テキストを手動で選択してコピーしてください。');
+    });
   };
 
   const handleSaveUrl = () => {
-    setSyncUrl(syncUrl.trim());
+    const trimmed = syncUrl.trim();
+    if (trimmed && !trimmed.startsWith('https://')) {
+      setUrlError('URL は https:// で始まる必要があります');
+      return;
+    }
+    setUrlError('');
+    setSyncUrl(trimmed);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -73,14 +90,18 @@ export default function SettingsModal({ data, onImport, onClose }) {
             <input
               type="url"
               value={syncUrl}
-              onChange={(e) => { setSyncUrlState(e.target.value); setSaved(false); }}
+              onChange={(e) => { setSyncUrlState(e.target.value); setSaved(false); setUrlError(''); }}
               placeholder="https://script.google.com/macros/s/..."
               style={{
-                width: '100%', padding: '10px 12px', border: '1px solid #ddd',
+                width: '100%', padding: '10px 12px',
+                border: `1px solid ${urlError ? '#DC2626' : '#ddd'}`,
                 borderRadius: 8, fontSize: 13, fontFamily: 'inherit',
                 boxSizing: 'border-box',
               }}
             />
+            {urlError && (
+              <div style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>{urlError}</div>
+            )}
             <button onClick={handleSaveUrl} style={{
               width: '100%', padding: '10px 0',
               background: saved ? '#2D6A4F' : '#3D3D3D',

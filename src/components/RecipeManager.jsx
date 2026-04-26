@@ -17,23 +17,27 @@ export default function RecipeManager({ data, onUpdate }) {
   const [editingRecipe, setEditingRecipe] = useState(null);
   const [editName, setEditName] = useState('');
   const [editGenre, setEditGenre] = useState('');
+  const [confirmDeleteRecipeId, setConfirmDeleteRecipeId] = useState(null);
+  const [confirmDeleteGenreId, setConfirmDeleteGenreId] = useState(null);
 
   const genId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
   const addRecipe = () => {
-    if (!recipeName.trim()) return;
-    const newR = { id: genId(), name: recipeName.trim(), genreId: selectedGenre || genres[0]?.id || 'g10' };
+    if (!recipeName.trim() || genres.length === 0) return;
+    const genreId = selectedGenre || genres[0].id;
+    const newR = { id: genId(), name: recipeName.trim(), genreId };
     onUpdate({ ...data, recipes: [...recipes, newR] });
     setRecipeName('');
   };
 
-  const deleteRecipe = (id) => {
-    if (!window.confirm('このレシピを削除しますか？')) return;
+  const confirmDeleteRecipe = () => {
+    if (!confirmDeleteRecipeId) return;
     onUpdate({
       ...data,
-      recipes: recipes.filter((r) => r.id !== id),
-      scheduled: data.scheduled.filter((s) => s.recipeId !== id),
+      recipes: recipes.filter((r) => r.id !== confirmDeleteRecipeId),
+      scheduled: data.scheduled.filter((s) => s.recipeId !== confirmDeleteRecipeId),
     });
+    setConfirmDeleteRecipeId(null);
   };
 
   const startEdit = (r) => {
@@ -59,16 +63,18 @@ export default function RecipeManager({ data, onUpdate }) {
     setShowGenreAdd(false);
   };
 
-  const deleteGenre = (id) => {
-    if (id === 'g10') return;
-    if (!window.confirm('このジャンルを削除しますか？（レシピは「その他」に移動します）')) return;
-    const otherGenre = genres.find((g) => g.name === 'その他') || genres.find((g) => g.id === 'g10');
-    const otherId = otherGenre ? otherGenre.id : 'g10';
+  const confirmDeleteGenre = () => {
+    if (!confirmDeleteGenreId) return;
+    const id = confirmDeleteGenreId;
+    const remaining = genres.filter((g) => g.id !== id);
+    const fallback = remaining.find((g) => g.name === 'その他') || remaining.find((g) => g.id === 'g10') || remaining[0];
+    if (!fallback) { setConfirmDeleteGenreId(null); return; }
     onUpdate({
       ...data,
-      genres: genres.filter((g) => g.id !== id),
-      recipes: recipes.map((r) => r.genreId === id ? { ...r, genreId: otherId } : r),
+      genres: remaining,
+      recipes: recipes.map((r) => r.genreId === id ? { ...r, genreId: fallback.id } : r),
     });
+    setConfirmDeleteGenreId(null);
   };
 
   const sectionStyle = {
@@ -82,6 +88,12 @@ export default function RecipeManager({ data, onUpdate }) {
   const btnStyle = {
     padding: '8px 16px', border: 'none', borderRadius: 8, fontSize: 13,
     fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+  };
+
+  const confirmModalStyle = {
+    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+    background: 'rgba(0,0,0,0.4)', zIndex: 9999,
+    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
   };
 
   return (
@@ -143,7 +155,7 @@ export default function RecipeManager({ data, onUpdate }) {
               <span style={{ width: 10, height: 10, borderRadius: '50%', background: g.color, display: 'inline-block' }} />
               <span style={{ fontSize: 12, color: g.color, fontWeight: 600 }}>{g.name}</span>
               {g.id !== 'g10' && g.name !== 'その他' && (
-                <span onClick={() => deleteGenre(g.id)} style={{
+                <span onClick={() => setConfirmDeleteGenreId(g.id)} style={{
                   cursor: 'pointer', fontSize: 14, color: '#999', marginLeft: 2, lineHeight: 1,
                 }}>×</span>
               )}
@@ -174,7 +186,7 @@ export default function RecipeManager({ data, onUpdate }) {
                 background: 'none', border: '1px solid #ddd', borderRadius: 6,
                 fontSize: 11, padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit', color: '#666',
               }}>編集</button>
-              <button onClick={() => deleteRecipe(r.id)} style={{
+              <button onClick={() => setConfirmDeleteRecipeId(r.id)} style={{
                 background: 'none', border: '1px solid #fcc', borderRadius: 6,
                 fontSize: 11, padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit', color: '#D32F2F',
               }}>削除</button>
@@ -185,11 +197,7 @@ export default function RecipeManager({ data, onUpdate }) {
 
       {/* 編集モーダル */}
       {editingRecipe && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.4)', zIndex: 9999,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-        }} onClick={() => setEditingRecipe(null)}>
+        <div style={confirmModalStyle} onClick={() => setEditingRecipe(null)}>
           <div style={{
             background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 360,
           }} onClick={(e) => e.stopPropagation()}>
@@ -207,6 +215,38 @@ export default function RecipeManager({ data, onUpdate }) {
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={saveEdit} style={{ ...btnStyle, flex: 1, background: '#3D3D3D', color: '#fff' }}>保存</button>
               <button onClick={() => setEditingRecipe(null)} style={{ ...btnStyle, flex: 1, background: '#eee', color: '#555' }}>キャンセル</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* レシピ削除確認モーダル */}
+      {confirmDeleteRecipeId && (
+        <div style={confirmModalStyle} onClick={() => setConfirmDeleteRecipeId(null)}>
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 320,
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>レシピを削除しますか？</div>
+            <div style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>スケジュールからも削除されます。</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={confirmDeleteRecipe} style={{ ...btnStyle, flex: 1, background: '#DC2626', color: '#fff' }}>削除</button>
+              <button onClick={() => setConfirmDeleteRecipeId(null)} style={{ ...btnStyle, flex: 1, background: '#eee', color: '#555' }}>キャンセル</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ジャンル削除確認モーダル */}
+      {confirmDeleteGenreId && (
+        <div style={confirmModalStyle} onClick={() => setConfirmDeleteGenreId(null)}>
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 320,
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>ジャンルを削除しますか？</div>
+            <div style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>このジャンルのレシピは「その他」に移動します。</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={confirmDeleteGenre} style={{ ...btnStyle, flex: 1, background: '#DC2626', color: '#fff' }}>削除</button>
+              <button onClick={() => setConfirmDeleteGenreId(null)} style={{ ...btnStyle, flex: 1, background: '#eee', color: '#555' }}>キャンセル</button>
             </div>
           </div>
         </div>

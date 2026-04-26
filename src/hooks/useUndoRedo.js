@@ -6,13 +6,13 @@ export function useUndoRedo(initialState) {
   const [state, setState] = useState(initialState);
   const pastRef = useRef([]);
   const futureRef = useRef([]);
-  const [, forceRender] = useState(0);
+  const [histCounts, setHistCounts] = useState({ past: 0, future: 0 });
 
   const pushState = useCallback((newState) => {
     pastRef.current = [...pastRef.current.slice(-(MAX_HISTORY - 1)), state];
     futureRef.current = [];
     setState(typeof newState === 'function' ? newState(state) : newState);
-    forceRender((n) => n + 1);
+    setHistCounts({ past: pastRef.current.length, future: 0 });
   }, [state]);
 
   const undo = useCallback(() => {
@@ -21,7 +21,7 @@ export function useUndoRedo(initialState) {
     pastRef.current = pastRef.current.slice(0, -1);
     futureRef.current = [...futureRef.current, state];
     setState(prev);
-    forceRender((n) => n + 1);
+    setHistCounts({ past: pastRef.current.length, future: futureRef.current.length });
   }, [state]);
 
   const redo = useCallback(() => {
@@ -30,14 +30,14 @@ export function useUndoRedo(initialState) {
     futureRef.current = futureRef.current.slice(0, -1);
     pastRef.current = [...pastRef.current, state];
     setState(next);
-    forceRender((n) => n + 1);
+    setHistCounts({ past: pastRef.current.length, future: futureRef.current.length });
   }, [state]);
 
   const resetHistory = useCallback((newState) => {
     pastRef.current = [];
     futureRef.current = [];
     setState(newState);
-    forceRender((n) => n + 1);
+    setHistCounts({ past: 0, future: 0 });
   }, []);
 
   return {
@@ -45,10 +45,10 @@ export function useUndoRedo(initialState) {
     pushState,
     undo,
     redo,
-    canUndo: pastRef.current.length > 0,
-    canRedo: futureRef.current.length > 0,
-    undoCount: pastRef.current.length,
-    redoCount: futureRef.current.length,
+    canUndo: histCounts.past > 0,
+    canRedo: histCounts.future > 0,
+    undoCount: histCounts.past,
+    redoCount: histCounts.future,
     resetHistory,
   };
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { MEAL_TIMES } from '../constants';
+import { MEAL_TIMES, addDays } from '../constants';
 
 export default function DetailModal({ item, recipes, genres, onUpdate, onDelete, onClose }) {
   if (!item) return null;
@@ -16,17 +16,8 @@ export default function DetailModal({ item, recipes, genres, onUpdate, onDelete,
 
   const currentPrepKey = item.noPrep ? 'none'
     : item.prepDate === item.startDate ? 'same'
-    : item.prepDate && item.prepDate !== addDaysSimple(item.startDate, -1) ? 'custom'
+    : item.prepDate && item.prepDate !== addDays(item.startDate, -1) ? 'custom'
     : 'prev';
-
-  function addDaysSimple(dateStr, n) {
-    const d = new Date(dateStr);
-    d.setDate(d.getDate() + n);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${dd}`;
-  }
 
   const handleMealTime = (mt) => {
     onUpdate({ ...item, mealTime: mt });
@@ -41,13 +32,13 @@ export default function DetailModal({ item, recipes, genres, onUpdate, onDelete,
 
   const handlePrepOption = (key) => {
     if (key === 'prev') {
-      onUpdate({ ...item, noPrep: false, prepDate: addDaysSimple(item.startDate, -1) });
+      onUpdate({ ...item, noPrep: false, prepDate: addDays(item.startDate, -1) });
     } else if (key === 'same') {
       onUpdate({ ...item, noPrep: false, prepDate: item.startDate });
     } else if (key === 'none') {
       onUpdate({ ...item, noPrep: true, prepDate: null });
     } else if (key === 'custom') {
-      onUpdate({ ...item, noPrep: false, prepDate: item.prepDate || addDaysSimple(item.startDate, -1) });
+      onUpdate({ ...item, noPrep: false, prepDate: item.prepDate || addDays(item.startDate, -1) });
     }
   };
 

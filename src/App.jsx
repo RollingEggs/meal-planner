@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { DEFAULT_GENRES, STORAGE_KEY, getDateRange, today, formatDate, addDays, genId, COL_WIDTH, LABEL_WIDTH } from './constants';
+import { DEFAULT_GENRES, STORAGE_KEY, getDateRange, today, addDays, genId, COL_WIDTH, LABEL_WIDTH } from './constants';
 import { useUndoRedo } from './hooks/useUndoRedo';
 import { fetchRemoteData, saveRemoteData, getSyncUrl } from './sheets';
 import GanttChart from './components/GanttChart';
@@ -55,7 +55,7 @@ export default function App() {
   const scrolledRef = useRef(false);
   const scrollSyncRef = useRef(false);
   const [colWidth, setColWidth] = useState(COL_WIDTH);
-  const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | synced | offline
+  const [syncStatus, setSyncStatus] = useState(() => getSyncUrl() ? 'syncing' : 'idle'); // idle | syncing | synced | offline
   const initialSyncDoneRef = useRef(false);
   const syncCompletedRef = useRef(false);
   const lastSyncedDataRef = useRef(null);
@@ -84,12 +84,11 @@ export default function App() {
   // Keep dataRef in sync
   useEffect(() => { dataRef.current = data; }, [data]);
 
-  // Fetch from JSONBin on mount
+  // Fetch from remote on mount
   useEffect(() => {
     if (initialSyncDoneRef.current) return;
     initialSyncDoneRef.current = true;
-    setSyncStatus('syncing');
-    fetchRemoteData().then((remoteData) => {
+    fetchRemoteData().then(async (remoteData) => {
       if (remoteData && (remoteData.recipes?.length || remoteData.scheduled?.length)) {
         const cleaned = cleanOldData(parseData(remoteData));
         resetHistory(cleaned);
@@ -99,9 +98,9 @@ export default function App() {
       } else {
         // Remote has no data — push local data up
         const local = cleanOldData(loadData());
-        saveRemoteData(local);
+        const ok = await saveRemoteData(local);
         lastSyncedDataRef.current = local;
-        setSyncStatus('synced');
+        setSyncStatus(ok === false ? 'offline' : 'synced');
       }
       syncCompletedRef.current = true;
     });
@@ -112,8 +111,11 @@ export default function App() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     if (!syncCompletedRef.current) return;
     // Debounce remote writes to prevent race conditions when edits happen rapidly
-    const timer = setTimeout(() => {
-      saveRemoteData(data);
+    const timer = setTimeout(async () => {
+      setSyncStatus('syncing');
+      const result = await saveRemoteData(data);
+      if (result === true) setSyncStatus('synced');
+      else if (result === false) setSyncStatus('offline');
       lastSyncedDataRef.current = data;
     }, 500);
     return () => clearTimeout(timer);
@@ -231,7 +233,7 @@ export default function App() {
       ...data,
       scheduled: data.scheduled.map((s) => {
         if (s.id !== itemId) return s;
-        const daySpan = Math.round((new Date(s.endDate) - new Date(s.startDate)) / 86400000);
+        const daySpan = Math.round((new Date(s.endDate + 'T12:00:00') - new Date(s.startDate + 'T12:00:00')) / 86400000);
         const newEnd = addDays(newDate, daySpan);
         const newPrep = s.noPrep ? null : (s.prepDate === s.startDate ? newDate : addDays(newDate, -1));
         return { ...s, startDate: newDate, endDate: newEnd, prepDate: newPrep, mealTime: newLane || s.mealTime };
@@ -352,6 +354,15 @@ export default function App() {
             ↪
             {redoCount > 0 && <span style={badgeStyle}>{redoCount}</span>}
           </button>
+          {syncStatus !== 'idle' && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
+              background: syncStatus === 'offline' ? '#FEE2E2' : syncStatus === 'syncing' ? '#FEF9C3' : '#DCFCE7',
+              color: syncStatus === 'offline' ? '#DC2626' : syncStatus === 'syncing' ? '#CA8A04' : '#16A34A',
+            }} title={syncStatus === 'syncing' ? '同期中...' : syncStatus === 'offline' ? '同期失敗' : '同期済み'}>
+              {syncStatus === 'syncing' ? '⟳' : syncStatus === 'offline' ? '✕' : '✓'}
+            </span>
+          )}
           <button style={iconBtnStyle(true)} onClick={() => setShowSettings(true)} title="設定">⚙</button>
         </div>
       </div>
