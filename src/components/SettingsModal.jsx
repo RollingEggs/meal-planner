@@ -44,7 +44,8 @@ export default function SettingsModal({ data, onImport, onClose }) {
   const handleSave = () => {
     setJsonBinConfig(binId.trim(), apiKey.trim());
     setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    // Reload to restart sync with new credentials
+    setTimeout(() => window.location.reload(), 800);
   };
 
   const btnStyle = (active) => ({

@@ -355,12 +355,17 @@ export default function App() {
             {redoCount > 0 && <span style={badgeStyle}>{redoCount}</span>}
           </button>
           {syncStatus !== 'idle' && (
-            <span style={{
-              fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
-              background: syncStatus === 'offline' ? '#FEE2E2' : syncStatus === 'syncing' ? '#FEF9C3' : '#DCFCE7',
-              color: syncStatus === 'offline' ? '#DC2626' : syncStatus === 'syncing' ? '#CA8A04' : '#16A34A',
-            }} title={syncStatus === 'syncing' ? '同期中...' : syncStatus === 'offline' ? '同期失敗' : '同期済み'}>
-              {syncStatus === 'syncing' ? '⟳' : syncStatus === 'offline' ? '✕' : '✓'}
+            <span
+              onClick={syncStatus === 'offline' ? syncRemoteNow : undefined}
+              style={{
+                fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
+                background: syncStatus === 'offline' ? '#FEE2E2' : syncStatus === 'syncing' ? '#FEF9C3' : '#DCFCE7',
+                color: syncStatus === 'offline' ? '#DC2626' : syncStatus === 'syncing' ? '#CA8A04' : '#16A34A',
+                cursor: syncStatus === 'offline' ? 'pointer' : 'default',
+              }}
+              title={syncStatus === 'syncing' ? '同期中...' : syncStatus === 'offline' ? '同期失敗（タップで再試行）' : '同期済み'}
+            >
+              {syncStatus === 'syncing' ? '⟳' : syncStatus === 'offline' ? '✕ 再試行' : '✓'}
             </span>
           )}
           <button style={iconBtnStyle(true)} onClick={() => setShowSettings(true)} title="設定">⚙</button>

@@ -25,7 +25,7 @@ export async function fetchRemoteData() {
   const { binId, apiKey } = getJsonBinConfig();
   if (!binId || !apiKey) return null;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 1000);
+  const timer = setTimeout(() => controller.abort(), 8000);
   try {
     const res = await fetch(`${JSONBIN_API}/${binId}/latest`, {
       headers: { 'X-Master-Key': apiKey },
