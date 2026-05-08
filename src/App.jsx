@@ -54,7 +54,10 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(() => !isSyncConfigured());
   const scrolledRef = useRef(false);
   const scrollSyncRef = useRef(false);
-  const [colWidth, setColWidth] = useState(COL_WIDTH);
+  const [colWidth, setColWidth] = useState(() => {
+    const saved = localStorage.getItem('colWidth');
+    return saved ? parseInt(saved, 10) : COL_WIDTH;
+  });
   const [syncStatus, setSyncStatus] = useState(() => isSyncConfigured() ? 'syncing' : 'idle'); // idle | syncing | synced | offline
   const initialSyncDoneRef = useRef(false);
   const syncCompletedRef = useRef(false);
@@ -65,13 +68,18 @@ export default function App() {
   const handleZoom = useCallback((delta) => {
     const el = document.getElementById('gantt-scroll');
     if (!el) {
-      setColWidth(w => Math.max(60, Math.min(256, w + delta)));
+      setColWidth(w => {
+        const newW = Math.max(60, Math.min(256, w + delta));
+        localStorage.setItem('colWidth', newW);
+        return newW;
+      });
       return;
     }
     const viewCenter = el.scrollLeft + (el.clientWidth - LABEL_WIDTH) / 2;
     const centerDateIdx = viewCenter / colWidth;
     setColWidth(w => {
       const newW = Math.max(60, Math.min(256, w + delta));
+      localStorage.setItem('colWidth', newW);
       requestAnimationFrame(() => {
         el.scrollLeft = centerDateIdx * newW - (el.clientWidth - LABEL_WIDTH) / 2;
       });
