@@ -7,9 +7,8 @@ export default function RecipeList({ recipes, genres, selectedRecipeId, onSelect
   const searchRef = useRef(null);
 
   const handleSearchFocus = () => {
-    setTimeout(() => {
-      searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 300);
+    // キーボードが開く前に入力欄を画面上部に移動しておく
+    searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const filtered = recipes.filter((r) => {
