@@ -7,19 +7,8 @@ export default function RecipeList({ recipes, genres, selectedRecipeId, onSelect
   const searchRef = useRef(null);
 
   const handleSearchFocus = () => {
-    const scrollToInput = () => {
-      if (!searchRef.current) return;
-      const rect = searchRef.current.getBoundingClientRect();
-      const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-      if (rect.bottom > viewportHeight - 8) {
-        window.scrollBy({ top: rect.bottom - viewportHeight + 24, behavior: 'smooth' });
-      }
-    };
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', scrollToInput, { once: true });
-    } else {
-      setTimeout(scrollToInput, 400);
-    }
+    // キーボードが開く前に入力欄を画面上部に移動しておく
+    searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const filtered = recipes.filter((r) => {
