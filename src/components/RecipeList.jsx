@@ -7,9 +7,19 @@ export default function RecipeList({ recipes, genres, selectedRecipeId, onSelect
   const searchRef = useRef(null);
 
   const handleSearchFocus = () => {
-    setTimeout(() => {
-      searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 300);
+    const scrollToInput = () => {
+      if (!searchRef.current) return;
+      const rect = searchRef.current.getBoundingClientRect();
+      const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      if (rect.bottom > viewportHeight - 8) {
+        window.scrollBy({ top: rect.bottom - viewportHeight + 24, behavior: 'smooth' });
+      }
+    };
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', scrollToInput, { once: true });
+    } else {
+      setTimeout(scrollToInput, 400);
+    }
   };
 
   const filtered = recipes.filter((r) => {
