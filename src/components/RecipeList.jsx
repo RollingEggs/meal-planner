@@ -1,9 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 
 export default function RecipeList({ recipes, genres, selectedRecipeId, onSelectRecipe }) {
   const [collapsed, setCollapsed] = useState(false);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const searchRef = useRef(null);
+
+  const handleSearchFocus = () => {
+    setTimeout(() => {
+      searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+  };
 
   const filtered = recipes.filter((r) => {
     const matchesGenre = filter === 'all' || r.genreId === filter;
@@ -48,8 +55,10 @@ export default function RecipeList({ recipes, genres, selectedRecipeId, onSelect
         }}>
           {/* Search */}
           <input
+            ref={searchRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onFocus={handleSearchFocus}
             placeholder="レシピを検索..."
             style={{
               width: '100%', padding: '6px 10px', marginBottom: 8,
