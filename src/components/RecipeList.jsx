@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 
 export default function RecipeList({ recipes, genres, selectedRecipeId, onSelectRecipe }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -7,28 +7,6 @@ export default function RecipeList({ recipes, genres, selectedRecipeId, onSelect
   const [searchFocused, setSearchFocused] = useState(false);
   const searchRef = useRef(null);
 
-  const keepAboveKeyboard = () => {
-    requestAnimationFrame(() => {
-      if (!searchRef.current || !window.visualViewport) return;
-      const rect = searchRef.current.getBoundingClientRect();
-      const vvHeight = window.visualViewport.height;
-      if (rect.bottom > vvHeight - 8) {
-        window.scrollBy({ top: rect.bottom - vvHeight + 24, behavior: 'instant' });
-      }
-    });
-  };
-
-  // 入力中はvisualViewportの変化（iOS自動スクロール等）を監視して常に補正
-  useEffect(() => {
-    if (!searchFocused || !window.visualViewport) return;
-    window.visualViewport.addEventListener('scroll', keepAboveKeyboard);
-    window.visualViewport.addEventListener('resize', keepAboveKeyboard);
-    return () => {
-      window.visualViewport.removeEventListener('scroll', keepAboveKeyboard);
-      window.visualViewport.removeEventListener('resize', keepAboveKeyboard);
-    };
-  }, [searchFocused]);
-
   const handleSearchFocus = () => {
     setSearchFocused(true);
     searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -36,12 +14,6 @@ export default function RecipeList({ recipes, genres, selectedRecipeId, onSelect
 
   const handleSearchBlur = () => {
     setSearchFocused(false);
-  };
-
-  const handleSearchChange = (e) => {
-    setSearch(e.target.value);
-    // 文字入力でリスト高さが変わりiOSが自動スクロールするのを補正
-    keepAboveKeyboard();
   };
 
   const filtered = recipes.filter((r) => {
@@ -84,12 +56,14 @@ export default function RecipeList({ recipes, genres, selectedRecipeId, onSelect
         <div style={{
           background: '#fff', borderRadius: '0 0 10px 10px', border: '1px solid #eee',
           borderTop: 'none', padding: '8px 10px',
+          // 検索中にリストが短くなってもページ高さを維持し、iOSのスクロール位置クランプを防ぐ
+          minHeight: searchFocused ? '100vh' : undefined,
         }}>
           {/* Search */}
           <input
             ref={searchRef}
             value={search}
-            onChange={handleSearchChange}
+            onChange={(e) => setSearch(e.target.value)}
             onFocus={handleSearchFocus}
             onBlur={handleSearchBlur}
             placeholder="レシピを検索..."
