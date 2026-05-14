@@ -4,11 +4,16 @@ export default function RecipeList({ recipes, genres, selectedRecipeId, onSelect
   const [collapsed, setCollapsed] = useState(false);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
   const searchRef = useRef(null);
 
   const handleSearchFocus = () => {
-    // キーボードが開く前に入力欄を画面上部に移動しておく
+    setSearchFocused(true);
     searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleSearchBlur = () => {
+    setSearchFocused(false);
   };
 
   const filtered = recipes.filter((r) => {
@@ -51,6 +56,8 @@ export default function RecipeList({ recipes, genres, selectedRecipeId, onSelect
         <div style={{
           background: '#fff', borderRadius: '0 0 10px 10px', border: '1px solid #eee',
           borderTop: 'none', padding: '8px 10px',
+          // 検索中にリストが短くなってもページ高さを維持し、iOSのスクロール位置クランプを防ぐ
+          minHeight: searchFocused ? '100vh' : undefined,
         }}>
           {/* Search */}
           <input
@@ -58,6 +65,7 @@ export default function RecipeList({ recipes, genres, selectedRecipeId, onSelect
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onFocus={handleSearchFocus}
+            onBlur={handleSearchBlur}
             placeholder="レシピを検索..."
             style={{
               width: '100%', padding: '6px 10px', marginBottom: 8,
