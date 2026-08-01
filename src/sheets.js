@@ -1,40 +1,53 @@
-const JSONBIN_API = 'https://api.jsonbin.io/v3/b';
-const BIN_ID_KEY = 'meal-planner-jsonbin-bin-id';
-const API_KEY_KEY = 'meal-planner-jsonbin-api-key';
+// Google スプレッドシート同期クライアント（Apps Script Web App 経由）
+// サーバ側の実装は gas/Code.gs、セットアップ手順は gas/README.md を参照。
 
-export function getJsonBinConfig() {
+const URL_KEY = 'meal-planner-gas-url';
+const TOKEN_KEY = 'meal-planner-gas-token';
+
+// Apps Script は起動が遅いことがある（初回は特に）ので長めに待つ
+const FETCH_TIMEOUT = 15000;
+
+// 各シートの列。gas/Code.gs の SHEETS と順序を含めて一致させること。
+export const SHEET_COLUMNS = {
+  recipes: ['id', 'name', 'genreId'],
+  genres: ['id', 'name', 'color'],
+  scheduled: ['id', 'recipeId', 'startDate', 'endDate', 'prepDate', 'mealTime', 'noPrep'],
+  memos: ['date', 'text'],
+};
+
+export function getSyncConfig() {
   return {
-    binId: localStorage.getItem(BIN_ID_KEY) || '',
-    apiKey: localStorage.getItem(API_KEY_KEY) || '',
+    url: localStorage.getItem(URL_KEY) || '',
+    token: localStorage.getItem(TOKEN_KEY) || '',
   };
 }
 
-export function setJsonBinConfig(binId, apiKey) {
-  if (binId) localStorage.setItem(BIN_ID_KEY, binId);
-  else localStorage.removeItem(BIN_ID_KEY);
-  if (apiKey) localStorage.setItem(API_KEY_KEY, apiKey);
-  else localStorage.removeItem(API_KEY_KEY);
+export function setSyncConfig(url, token) {
+  if (url) localStorage.setItem(URL_KEY, url);
+  else localStorage.removeItem(URL_KEY);
+  if (token) localStorage.setItem(TOKEN_KEY, token);
+  else localStorage.removeItem(TOKEN_KEY);
 }
 
 export function isSyncConfigured() {
-  const { binId, apiKey } = getJsonBinConfig();
-  return !!(binId && apiKey);
+  return !!getSyncConfig().url;
 }
 
 export async function fetchRemoteData() {
-  const { binId, apiKey } = getJsonBinConfig();
-  if (!binId || !apiKey) return null;
+  const { url, token } = getSyncConfig();
+  if (!url) return null;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
   try {
-    const res = await fetch(`${JSONBIN_API}/${binId}/latest`, {
-      headers: { 'X-Master-Key': apiKey },
+    const res = await fetch(`${url}?token=${encodeURIComponent(token)}`, {
       signal: controller.signal,
     });
     clearTimeout(timer);
     if (!res.ok) return null;
     const json = await res.json();
-    return json.record || null;
+    // Apps Script はエラーでも HTTP 200 を返すので、ボディの ok を見る
+    if (!json || json.ok !== true) return null;
+    return json;
   } catch {
     clearTimeout(timer);
     return null;
@@ -43,18 +56,19 @@ export async function fetchRemoteData() {
 
 // Returns true on success, false on network/API error, null if not configured
 export async function saveRemoteData(data) {
-  const { binId, apiKey } = getJsonBinConfig();
-  if (!binId || !apiKey) return null;
+  const { url, token } = getSyncConfig();
+  if (!url) return null;
   try {
-    const res = await fetch(`${JSONBIN_API}/${binId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Master-Key': apiKey,
-      },
-      body: JSON.stringify(data),
+    const res = await fetch(url, {
+      method: 'POST',
+      // text/plain にすると CORS preflight が飛ばない。application/json だと
+      // Apps Script が OPTIONS に応答できず保存が失敗する。
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ token, data }),
     });
-    return res.ok;
+    if (!res.ok) return false;
+    const json = await res.json();
+    return json?.ok === true;
   } catch {
     return false;
   }
