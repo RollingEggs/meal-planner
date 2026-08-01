@@ -116,9 +116,10 @@ export default function RecipeManager({ data, onUpdate }) {
       <div style={sectionStyle}>
         <div style={sectionTitle}>🍳 レシピ登録</div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+          {/* Enter では追加しない。日本語入力の変換確定のEnterで
+              意図せず登録されてしまうため、追加は「＋追加」ボタンだけにする */}
           <input value={recipeName} onChange={(e) => setRecipeName(e.target.value)}
             placeholder="レシピ名" style={{ ...inputStyle, flex: 1 }}
-            onKeyDown={(e) => { if (e.key === 'Enter') addRecipe(); }}
           />
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
