@@ -10,7 +10,10 @@
     <title>献立管理ボード</title>
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      /* 文字サイズ倍率。ヘッダーの A− / A＋ で JS から上書きされる */
+      :root { --fs: 1; }
       body { font-family: 'Zen Kaku Gothic New', sans-serif; background: #FAFAF8; color: #3D3D3D; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+      #root { width: 100%; }
     </style>
   </head>
   <body>

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { LABEL_WIDTH } from '../constants';
+import { LABEL_WIDTH, fs } from '../constants';
 
-export default function PrepSchedule({ dates, scheduled, recipes, genres, colWidth }) {
+export default function PrepSchedule({ dates, scheduled, recipes, genres, colWidth, fontScale = 1 }) {
 
   const todayStr = useMemo(() => {
     const d = new Date();
@@ -26,7 +26,8 @@ export default function PrepSchedule({ dates, scheduled, recipes, genres, colWid
   }, [scheduled, recipes, genres, dateIndex]);
 
   const totalWidth = dates.length * colWidth;
-  const ROW_HEIGHT = 32;
+  // 文字サイズに合わせて行の高さも伸縮させる
+  const ROW_HEIGHT = Math.round(32 * fontScale);
 
   // Compute row indices for overlapping prep items (same prepDate)
   const { maxRows, itemRows } = useMemo(() => {
@@ -50,9 +51,9 @@ export default function PrepSchedule({ dates, scheduled, recipes, genres, colWid
         display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
         background: '#F5F0E8', borderRadius: '10px 10px 0 0',
       }}>
-        <span style={{ fontWeight: 700, fontSize: 14 }}>🔪 作業スケジュール</span>
+        <span style={{ fontWeight: 700, fontSize: fs(14) }}>🔪 作業スケジュール</span>
         <span style={{
-          background: '#3D3D3D', color: '#fff', fontSize: 10, padding: '1px 8px',
+          background: '#3D3D3D', color: '#fff', fontSize: fs(10), padding: '1px 8px',
           borderRadius: 10, fontWeight: 700,
         }}>{prepItems.length}</span>
       </div>
@@ -65,7 +66,7 @@ export default function PrepSchedule({ dates, scheduled, recipes, genres, colWid
       >
         <div style={{ display: 'flex', minWidth: totalWidth + LABEL_WIDTH }}>
           <div style={{ width: LABEL_WIDTH, flexShrink: 0, position: 'sticky', left: 0, zIndex: 2, background: '#fff' }}>
-            <div style={{ height: ROW_HEIGHT * maxRows, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🔪</div>
+            <div style={{ height: ROW_HEIGHT * maxRows, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: fs(14) }}>🔪</div>
           </div>
           <div style={{ position: 'relative', flex: 1 }}>
             <div style={{ position: 'relative', height: ROW_HEIGHT * maxRows }}>
@@ -92,7 +93,7 @@ export default function PrepSchedule({ dates, scheduled, recipes, genres, colWid
                     background: `repeating-linear-gradient(45deg, ${gc}08, ${gc}08 4px, ${gc}14 4px, ${gc}14 8px)`,
                     border: `1.5px dashed ${gc}88`, borderRadius: 5,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 9, color: gc, fontWeight: 600, overflow: 'hidden',
+                    fontSize: fs(9), color: gc, fontWeight: 600, overflow: 'hidden',
                     whiteSpace: 'nowrap', gap: 2, cursor: 'default',
                   }} title={`🔪 ${item.recipe?.name || '?'} (${item.prepDate})`}>
                     <span>🔪</span>

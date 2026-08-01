@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { fs } from '../constants';
 
 export default function RecipeList({ recipes, genres, selectedRecipeId, onSelectRecipe }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -39,15 +40,15 @@ export default function RecipeList({ recipes, genres, selectedRecipeId, onSelect
         display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
         background: '#F5F0E8', cursor: 'pointer', borderRadius: collapsed ? 10 : '10px 10px 0 0',
       }}>
-        <span style={{ fontSize: 12, color: '#888' }}>{collapsed ? '▶' : '▼'}</span>
-        <span style={{ fontWeight: 700, fontSize: 14 }}>🧑‍🍳 レシピ一覧</span>
+        <span style={{ fontSize: fs(12), color: '#888' }}>{collapsed ? '▶' : '▼'}</span>
+        <span style={{ fontWeight: 700, fontSize: fs(14) }}>🧑‍🍳 レシピ一覧</span>
         <span style={{
-          background: '#3D3D3D', color: '#fff', fontSize: 10, padding: '1px 8px',
+          background: '#3D3D3D', color: '#fff', fontSize: fs(10), padding: '1px 8px',
           borderRadius: 10, fontWeight: 700,
         }}>{recipes.length}</span>
         {selectedRecipeId && (
           <span style={{
-            background: '#E53E3E', color: '#fff', fontSize: 10, padding: '1px 8px',
+            background: '#E53E3E', color: '#fff', fontSize: fs(10), padding: '1px 8px',
             borderRadius: 10, fontWeight: 700, marginLeft: 'auto',
           }}>選択中</span>
         )}
@@ -70,7 +71,7 @@ export default function RecipeList({ recipes, genres, selectedRecipeId, onSelect
             style={{
               width: '100%', padding: '6px 10px', marginBottom: 8,
               border: '1px solid #ddd', borderRadius: 20,
-              fontSize: 12, fontFamily: 'inherit', outline: 'none',
+              fontSize: fs(12), fontFamily: 'inherit', outline: 'none',
               boxSizing: 'border-box',
             }}
           />
@@ -84,20 +85,25 @@ export default function RecipeList({ recipes, genres, selectedRecipeId, onSelect
               padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${filter === 'all' ? '#3D3D3D' : '#ddd'}`,
               background: filter === 'all' ? '#3D3D3D' : '#fff',
               color: filter === 'all' ? '#fff' : '#888',
-              fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0,
+              fontSize: fs(11), fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0,
             }}>全て</button>
             {genres.map((g) => (
               <button key={g.id} onClick={() => setFilter(g.id)} style={{
                 padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${filter === g.id ? g.color : '#ddd'}`,
                 background: filter === g.id ? g.color + '22' : '#fff',
                 color: filter === g.id ? g.color : '#888',
-                fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0,
+                fontSize: fs(11), fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0,
               }}>{g.name}</button>
             ))}
           </div>
 
           {/* Cards 2 columns */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+          {/* 画面幅に応じて列数が増える（スマホは2列、PCは横いっぱいに並ぶ） */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${fs(150)}), 1fr))`,
+            gap: 6,
+          }}>
             {filtered.map((r) => {
               const g = getGenre(r.genreId);
               const gc = g ? g.color : '#6C757D';
@@ -117,16 +123,16 @@ export default function RecipeList({ recipes, genres, selectedRecipeId, onSelect
                   }}
                 >
                   <span style={{
-                    fontSize: 9, background: gc + '22', color: gc, padding: '1px 6px',
+                    fontSize: fs(9), background: gc + '22', color: gc, padding: '1px 6px',
                     borderRadius: 8, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0,
                   }}>{g ? g.name : 'その他'}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+                  <span style={{ fontSize: fs(12), fontWeight: 600, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
                 </div>
               );
             })}
           </div>
           {filtered.length === 0 && (
-            <div style={{ padding: 16, textAlign: 'center', color: '#aaa', fontSize: 13 }}>
+            <div style={{ padding: 16, textAlign: 'center', color: '#aaa', fontSize: fs(13) }}>
               レシピがありません
             </div>
           )}

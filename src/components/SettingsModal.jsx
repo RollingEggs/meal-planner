@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { getSyncConfig, setSyncConfig } from '../sheets';
 import { toSheetTables } from '../migrate';
+import { fs } from '../constants';
 
 export default function SettingsModal({ data, onImport, onClose }) {
   const [jsonText, setJsonText] = useState('');
@@ -64,13 +65,13 @@ export default function SettingsModal({ data, onImport, onClose }) {
     borderRadius: 8,
     background: active ? '#3D3D3D' : '#fff',
     color: active ? '#fff' : '#666',
-    fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+    fontSize: fs(12), fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
     whiteSpace: 'nowrap',
   });
 
   const inputStyle = {
     width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-    borderRadius: 8, fontSize: 13, fontFamily: 'inherit',
+    borderRadius: 8, fontSize: fs(13), fontFamily: 'inherit',
     boxSizing: 'border-box',
   };
 
@@ -86,7 +87,7 @@ export default function SettingsModal({ data, onImport, onClose }) {
         background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 420,
         maxHeight: '80vh', overflow: 'auto',
       }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 14 }}>⚙ 設定</div>
+        <div style={{ fontSize: fs(16), fontWeight: 700, marginBottom: 14 }}>⚙ 設定</div>
 
         <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
           <button onClick={() => setMode('sync')} style={btnStyle(mode === 'sync')}>同期設定</button>
@@ -97,14 +98,14 @@ export default function SettingsModal({ data, onImport, onClose }) {
 
         {mode === 'sync' && (
           <>
-            <p style={{ fontSize: 12, color: '#666', marginBottom: 10, lineHeight: 1.6 }}>
+            <p style={{ fontSize: fs(12), color: '#666', marginBottom: 10, lineHeight: 1.6 }}>
               Google スプレッドシートに保存します。スプレッドシートに Apps Script を
               設置して「ウェブアプリ」としてデプロイし、その URL を入力してください
               （手順は gas/README.md）。この設定はこのデバイスのみに保存され、
               コードには含まれません。
             </p>
             <div style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>ウェブアプリ URL</div>
+              <div style={{ fontSize: fs(11), color: '#888', marginBottom: 4 }}>ウェブアプリ URL</div>
               <input
                 value={url}
                 onChange={(e) => { setUrl(e.target.value); setSaved(false); }}
@@ -113,7 +114,7 @@ export default function SettingsModal({ data, onImport, onClose }) {
               />
             </div>
             <div style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>合言葉（スクリプト プロパティの TOKEN）</div>
+              <div style={{ fontSize: fs(11), color: '#888', marginBottom: 4 }}>合言葉（スクリプト プロパティの TOKEN）</div>
               <input
                 type="password"
                 value={token}
@@ -126,7 +127,7 @@ export default function SettingsModal({ data, onImport, onClose }) {
               width: '100%', padding: '10px 0',
               background: saved ? '#2D6A4F' : '#3D3D3D',
               color: '#fff', border: 'none', borderRadius: 8,
-              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              fontSize: fs(14), fontWeight: 700, cursor: 'pointer',
               fontFamily: 'inherit', marginTop: 4, transition: 'background 0.2s',
             }}>
               {saved ? '✓ 保存しました' : '保存'}
@@ -136,7 +137,7 @@ export default function SettingsModal({ data, onImport, onClose }) {
 
         {mode === 'migrate' && (
           <>
-            <p style={{ fontSize: 12, color: '#666', marginBottom: 10, lineHeight: 1.6 }}>
+            <p style={{ fontSize: fs(12), color: '#666', marginBottom: 10, lineHeight: 1.6 }}>
               今のデータをスプレッドシートに移すための表です。シートごとにコピーして、
               スプレッドシートの同じ名前のシートの <b>A1 セル</b>に貼り付けてください
               （1行目の見出しごと貼り付けます）。タブ区切りなので、貼るだけで列に分かれます。
@@ -147,9 +148,9 @@ export default function SettingsModal({ data, onImport, onClose }) {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   marginBottom: 4,
                 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700 }}>
+                  <div style={{ fontSize: fs(12), fontWeight: 700 }}>
                     {t.name}
-                    <span style={{ fontSize: 11, color: '#888', fontWeight: 400, marginLeft: 6 }}>
+                    <span style={{ fontSize: fs(11), color: '#888', fontWeight: 400, marginLeft: 6 }}>
                       {t.count}件
                     </span>
                   </div>
@@ -157,14 +158,14 @@ export default function SettingsModal({ data, onImport, onClose }) {
                     padding: '5px 12px',
                     background: copiedSheet === t.name ? '#2D6A4F' : '#3D3D3D',
                     color: '#fff', border: 'none', borderRadius: 6,
-                    fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                    fontSize: fs(12), fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                   }}>
                     {copiedSheet === t.name ? '✓ コピー済' : '📋 コピー'}
                   </button>
                 </div>
                 <textarea readOnly value={t.tsv} style={{
                   width: '100%', height: 80, border: '1px solid #ddd', borderRadius: 8,
-                  padding: 8, fontSize: 10, fontFamily: 'monospace', resize: 'vertical',
+                  padding: 8, fontSize: fs(10), fontFamily: 'monospace', resize: 'vertical',
                   boxSizing: 'border-box', whiteSpace: 'pre', overflowX: 'auto',
                 }} />
               </div>
@@ -176,11 +177,11 @@ export default function SettingsModal({ data, onImport, onClose }) {
           <>
             <textarea readOnly value={exportData} style={{
               width: '100%', height: 200, border: '1px solid #ddd', borderRadius: 8,
-              padding: 10, fontSize: 11, fontFamily: 'monospace', resize: 'vertical',
+              padding: 10, fontSize: fs(11), fontFamily: 'monospace', resize: 'vertical',
             }} />
             <button onClick={handleCopy} style={{
               width: '100%', padding: '10px 0', background: '#3D3D3D', color: '#fff',
-              border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700,
+              border: 'none', borderRadius: 8, fontSize: fs(14), fontWeight: 700,
               cursor: 'pointer', fontFamily: 'inherit', marginTop: 8,
             }}>📋 コピー</button>
           </>
@@ -191,11 +192,11 @@ export default function SettingsModal({ data, onImport, onClose }) {
             <textarea value={jsonText} onChange={(e) => setJsonText(e.target.value)}
               placeholder="エクスポートしたJSONをペースト" style={{
                 width: '100%', height: 200, border: '1px solid #ddd', borderRadius: 8,
-                padding: 10, fontSize: 11, fontFamily: 'monospace', resize: 'vertical',
+                padding: 10, fontSize: fs(11), fontFamily: 'monospace', resize: 'vertical',
               }} />
             <button onClick={handleImport} style={{
               width: '100%', padding: '10px 0', background: '#2D6A4F', color: '#fff',
-              border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700,
+              border: 'none', borderRadius: 8, fontSize: fs(14), fontWeight: 700,
               cursor: 'pointer', fontFamily: 'inherit', marginTop: 8,
             }}>📥 インポート</button>
           </>
@@ -203,7 +204,7 @@ export default function SettingsModal({ data, onImport, onClose }) {
 
         <button onClick={onClose} style={{
           width: '100%', padding: '10px 0', background: '#f0f0f0', color: '#555',
-          border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600,
+          border: 'none', borderRadius: 8, fontSize: fs(14), fontWeight: 600,
           cursor: 'pointer', fontFamily: 'inherit', marginTop: 8,
         }}>閉じる</button>
       </div>

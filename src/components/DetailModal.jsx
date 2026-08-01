@@ -1,5 +1,5 @@
 import React from 'react';
-import { MEAL_TIMES, addDays } from '../constants';
+import { MEAL_TIMES, addDays, fs } from '../constants';
 
 export default function DetailModal({ item, recipes, genres, onUpdate, onDelete, onClose }) {
   if (!item) return null;
@@ -60,7 +60,7 @@ export default function DetailModal({ item, recipes, genres, onUpdate, onDelete,
   };
 
   const section = { marginBottom: 16 };
-  const sectionTitle = { fontSize: 13, fontWeight: 700, marginBottom: 8, color: '#555' };
+  const sectionTitle = { fontSize: fs(13), fontWeight: 700, marginBottom: 8, color: '#555' };
 
   return (
     <div style={overlay} onClick={onClose}>
@@ -69,9 +69,9 @@ export default function DetailModal({ item, recipes, genres, onUpdate, onDelete,
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{
               background: genreColor + '22', color: genreColor, padding: '2px 10px',
-              borderRadius: 12, fontSize: 12, fontWeight: 700, border: `1px solid ${genreColor}44`,
+              borderRadius: 12, fontSize: fs(12), fontWeight: 700, border: `1px solid ${genreColor}44`,
             }}>{genre ? genre.name : 'その他'}</span>
-            <span style={{ fontWeight: 700, fontSize: 16 }}>{recipe ? recipe.name : '不明'}</span>
+            <span style={{ fontWeight: 700, fontSize: fs(16) }}>{recipe ? recipe.name : '不明'}</span>
           </div>
         </div>
 
@@ -82,7 +82,7 @@ export default function DetailModal({ item, recipes, genres, onUpdate, onDelete,
               <button key={mt.key} onClick={() => handleMealTime(mt.key)} style={{
                 flex: 1, padding: '8px 0', border: `2px solid ${item.mealTime === mt.key ? mt.color : '#ddd'}`,
                 borderRadius: 10, background: item.mealTime === mt.key ? mt.color + '18' : '#fff',
-                cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', fontWeight: 600,
+                cursor: 'pointer', fontSize: fs(14), fontFamily: 'inherit', fontWeight: 600,
                 color: item.mealTime === mt.key ? mt.color : '#888',
               }}>
                 {mt.icon} {mt.label}
@@ -96,20 +96,20 @@ export default function DetailModal({ item, recipes, genres, onUpdate, onDelete,
           <div style={sectionTitle}>📏 期間（作り置き）</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, color: '#999', marginBottom: 2 }}>開始日</div>
+              <div style={{ fontSize: fs(11), color: '#999', marginBottom: 2 }}>開始日</div>
               <div style={{
-                padding: '6px 10px', background: '#f5f5f5', borderRadius: 8, fontSize: 13,
+                padding: '6px 10px', background: '#f5f5f5', borderRadius: 8, fontSize: fs(13),
                 color: '#555',
               }}>{item.startDate}</div>
             </div>
-            <span style={{ fontSize: 18, color: '#ccc', marginTop: 14 }}>→</span>
+            <span style={{ fontSize: fs(18), color: '#ccc', marginTop: 14 }}>→</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, color: '#999', marginBottom: 2 }}>終了日</div>
+              <div style={{ fontSize: fs(11), color: '#999', marginBottom: 2 }}>終了日</div>
               <input type="date" value={item.endDate} onChange={handleEndDate}
                 min={item.startDate}
                 style={{
                   padding: '6px 10px', border: '1px solid #ddd', borderRadius: 8,
-                  fontSize: 13, fontFamily: 'inherit', width: '100%',
+                  fontSize: fs(13), fontFamily: 'inherit', width: '100%',
                 }}
               />
             </div>
@@ -123,12 +123,12 @@ export default function DetailModal({ item, recipes, genres, onUpdate, onDelete,
               <button key={opt.key} onClick={() => handlePrepOption(opt.key)} style={{
                 padding: '10px 12px', border: `2px solid ${currentPrepKey === opt.key ? genreColor : '#eee'}`,
                 borderRadius: 10, background: currentPrepKey === opt.key ? genreColor + '12' : '#fff',
-                cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', textAlign: 'left',
+                cursor: 'pointer', fontSize: fs(13), fontFamily: 'inherit', textAlign: 'left',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 color: currentPrepKey === opt.key ? genreColor : '#555',
                 fontWeight: currentPrepKey === opt.key ? 700 : 400,
               }}>
-                <span>{opt.label} {opt.desc && <span style={{ fontSize: 11, color: '#aaa' }}>({opt.desc})</span>}</span>
+                <span>{opt.label} {opt.desc && <span style={{ fontSize: fs(11), color: '#aaa' }}>({opt.desc})</span>}</span>
                 {currentPrepKey === opt.key && <span style={{ color: genreColor }}>✓</span>}
               </button>
             ))}
@@ -136,7 +136,7 @@ export default function DetailModal({ item, recipes, genres, onUpdate, onDelete,
               <input type="date" value={item.prepDate || ''} onChange={handleCustomPrepDate}
                 style={{
                   padding: '8px 10px', border: `1px solid ${genreColor}66`, borderRadius: 8,
-                  fontSize: 13, fontFamily: 'inherit', marginTop: 4,
+                  fontSize: fs(13), fontFamily: 'inherit', marginTop: 4,
                 }}
               />
             )}
@@ -146,11 +146,11 @@ export default function DetailModal({ item, recipes, genres, onUpdate, onDelete,
         <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
           <button onClick={() => { onDelete(item.id); onClose(); }} style={{
             flex: 1, padding: '12px 0', background: '#DC2626', color: '#fff', border: 'none',
-            borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+            borderRadius: 10, fontSize: fs(14), fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
           }}>スケジュールから削除</button>
           <button onClick={onClose} style={{
             flex: 1, padding: '12px 0', background: '#f0f0f0', color: '#555', border: 'none',
-            borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+            borderRadius: 10, fontSize: fs(14), fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
           }}>閉じる</button>
         </div>
       </div>

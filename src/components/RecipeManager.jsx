@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fs } from '../constants';
 
 const PALETTE = [
   '#C84B31','#2D6A4F','#E76F51','#D62828','#6A5ACD',
@@ -94,13 +95,13 @@ export default function RecipeManager({ data, onUpdate }) {
   const sectionStyle = {
     background: '#F5F0E8', borderRadius: 12, padding: 14, marginBottom: 14,
   };
-  const sectionTitle = { fontSize: 14, fontWeight: 700, marginBottom: 10, color: '#555' };
+  const sectionTitle = { fontSize: fs(14), fontWeight: 700, marginBottom: 10, color: '#555' };
   const inputStyle = {
     padding: '8px 12px', border: '1px solid #ddd', borderRadius: 8,
-    fontSize: 14, fontFamily: 'inherit', outline: 'none', width: '100%',
+    fontSize: fs(14), fontFamily: 'inherit', outline: 'none', width: '100%',
   };
   const btnStyle = {
-    padding: '8px 16px', border: 'none', borderRadius: 8, fontSize: 13,
+    padding: '8px 16px', border: 'none', borderRadius: 8, fontSize: fs(13),
     fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
   };
 
@@ -140,7 +141,7 @@ export default function RecipeManager({ data, onUpdate }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div style={sectionTitle}>🏷️ ジャンル管理</div>
           <button onClick={() => setShowGenreAdd(!showGenreAdd)}
-            style={{ ...btnStyle, background: '#3D3D3D', color: '#fff', fontSize: 12 }}>
+            style={{ ...btnStyle, background: '#3D3D3D', color: '#fff', fontSize: fs(12) }}>
             ＋追加
           </button>
         </div>
@@ -168,13 +169,13 @@ export default function RecipeManager({ data, onUpdate }) {
               border: `1px solid ${g.color}44`, borderRadius: 20, padding: '4px 10px',
             }}>
               <span style={{ width: 10, height: 10, borderRadius: '50%', background: g.color, display: 'inline-block' }} />
-              <span style={{ fontSize: 12, color: g.color, fontWeight: 600 }}>{g.name}</span>
+              <span style={{ fontSize: fs(12), color: g.color, fontWeight: 600 }}>{g.name}</span>
               <span onClick={() => setEditingGenre({ id: g.id, name: g.name, color: g.color })} style={{
-                cursor: 'pointer', fontSize: 11, color: '#aaa', marginLeft: 2, lineHeight: 1,
+                cursor: 'pointer', fontSize: fs(11), color: '#aaa', marginLeft: 2, lineHeight: 1,
               }}>✎</span>
               {g.id !== 'g10' && g.name !== 'その他' && (
                 <span onClick={() => setConfirmDeleteGenreId(g.id)} style={{
-                  cursor: 'pointer', fontSize: 14, color: '#999', lineHeight: 1,
+                  cursor: 'pointer', fontSize: fs(14), color: '#999', lineHeight: 1,
                 }}>×</span>
               )}
             </div>
@@ -185,7 +186,7 @@ export default function RecipeManager({ data, onUpdate }) {
       {/* レシピ一覧 */}
       <div style={sectionStyle}>
         <div style={sectionTitle}>📋 登録済みレシピ ({recipes.length})</div>
-        {recipes.length === 0 && <div style={{ color: '#aaa', fontSize: 13 }}>レシピがありません</div>}
+        {recipes.length === 0 && <div style={{ color: '#aaa', fontSize: fs(13) }}>レシピがありません</div>}
         {recipes.map((r) => {
           const g = genres.find((gen) => gen.id === r.genreId);
           const gc = g ? g.color : '#6C757D';
@@ -196,17 +197,17 @@ export default function RecipeManager({ data, onUpdate }) {
               borderLeft: `4px solid ${gc}`,
             }}>
               <span style={{
-                fontSize: 10, background: gc + '22', color: gc, padding: '1px 8px',
+                fontSize: fs(10), background: gc + '22', color: gc, padding: '1px 8px',
                 borderRadius: 10, fontWeight: 700, whiteSpace: 'nowrap',
               }}>{g ? g.name : 'その他'}</span>
-              <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{r.name}</span>
+              <span style={{ flex: 1, fontSize: fs(13), fontWeight: 500 }}>{r.name}</span>
               <button onClick={() => startEdit(r)} style={{
                 background: 'none', border: '1px solid #ddd', borderRadius: 6,
-                fontSize: 11, padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit', color: '#666',
+                fontSize: fs(11), padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit', color: '#666',
               }}>編集</button>
               <button onClick={() => setConfirmDeleteRecipeId(r.id)} style={{
                 background: 'none', border: '1px solid #fcc', borderRadius: 6,
-                fontSize: 11, padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit', color: '#D32F2F',
+                fontSize: fs(11), padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit', color: '#D32F2F',
               }}>削除</button>
             </div>
           );
@@ -219,7 +220,7 @@ export default function RecipeManager({ data, onUpdate }) {
           <div style={{
             background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 360,
           }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>レシピ編集</div>
+            <div style={{ fontSize: fs(15), fontWeight: 700, marginBottom: 12 }}>レシピ編集</div>
             <input value={editName} onChange={(e) => setEditName(e.target.value)}
               style={{ ...inputStyle, marginBottom: 10 }}
               onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); }}
@@ -244,7 +245,7 @@ export default function RecipeManager({ data, onUpdate }) {
           <div style={{
             background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 360,
           }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>ジャンルを編集</div>
+            <div style={{ fontSize: fs(15), fontWeight: 700, marginBottom: 12 }}>ジャンルを編集</div>
             <input
               value={editingGenre.name}
               onChange={(e) => setEditingGenre({ ...editingGenre, name: e.target.value })}
@@ -273,8 +274,8 @@ export default function RecipeManager({ data, onUpdate }) {
           <div style={{
             background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 320,
           }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>レシピを削除しますか？</div>
-            <div style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>スケジュールからも削除されます。</div>
+            <div style={{ fontSize: fs(15), fontWeight: 700, marginBottom: 8 }}>レシピを削除しますか？</div>
+            <div style={{ fontSize: fs(13), color: '#666', marginBottom: 16 }}>スケジュールからも削除されます。</div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={confirmDeleteRecipe} style={{ ...btnStyle, flex: 1, background: '#DC2626', color: '#fff' }}>削除</button>
               <button onClick={() => setConfirmDeleteRecipeId(null)} style={{ ...btnStyle, flex: 1, background: '#eee', color: '#555' }}>キャンセル</button>
@@ -289,8 +290,8 @@ export default function RecipeManager({ data, onUpdate }) {
           <div style={{
             background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 320,
           }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>ジャンルを削除しますか？</div>
-            <div style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>このジャンルのレシピは「その他」に移動します。</div>
+            <div style={{ fontSize: fs(15), fontWeight: 700, marginBottom: 8 }}>ジャンルを削除しますか？</div>
+            <div style={{ fontSize: fs(13), color: '#666', marginBottom: 16 }}>このジャンルのレシピは「その他」に移動します。</div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={confirmDeleteGenre} style={{ ...btnStyle, flex: 1, background: '#DC2626', color: '#fff' }}>削除</button>
               <button onClick={() => setConfirmDeleteGenreId(null)} style={{ ...btnStyle, flex: 1, background: '#eee', color: '#555' }}>キャンセル</button>

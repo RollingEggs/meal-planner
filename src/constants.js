@@ -26,6 +26,15 @@ export const LABEL_WIDTH = 40;
 
 export const STORAGE_KEY = 'meal-planner-data';
 
+// 文字サイズ倍率（--fs）の設定。ヘッダーの A− / A＋ で切り替える
+export const FONT_SCALE_KEY = 'fontScale';
+export const FONT_SCALE_MIN = 0.8;
+export const FONT_SCALE_MAX = 1.6;
+export const FONT_SCALE_STEP = 0.1;
+
+// px 指定のフォントサイズを --fs 倍率つきの値に変換する
+export const fs = (px) => `calc(${px}px * var(--fs, 1))`;
+
 export const formatDate = (d) => {
   const date = new Date(d);
   const y = date.getFullYear();

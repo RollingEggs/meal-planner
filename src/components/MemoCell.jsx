@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fs } from '../constants';
 
 export default function MemoCell({ dateStr, value, onChange }) {
   const [editing, setEditing] = useState(false);
@@ -19,7 +20,7 @@ export default function MemoCell({ dateStr, value, onChange }) {
         onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
         style={{
           width: '100%', height: '100%', border: 'none', outline: 'none',
-          background: '#FFF8E1', fontSize: 10, textAlign: 'center',
+          background: '#FFF8E1', fontSize: fs(10), textAlign: 'center',
           fontFamily: 'inherit', padding: '0 2px',
         }}
       />
@@ -31,7 +32,7 @@ export default function MemoCell({ dateStr, value, onChange }) {
       onClick={() => { setText(value || ''); setEditing(true); }}
       style={{
         width: '100%', height: '100%', display: 'flex', alignItems: 'center',
-        justifyContent: 'center', cursor: 'pointer', fontSize: 9,
+        justifyContent: 'center', cursor: 'pointer', fontSize: fs(9),
         background: value ? '#FFF3E0' : 'transparent',
         borderRadius: value ? 4 : 0,
         color: value ? '#E65100' : '#999',
