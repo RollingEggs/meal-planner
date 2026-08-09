@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { fs } from '../constants';
 
 const PALETTE = [
@@ -21,7 +21,20 @@ export default function RecipeManager({ data, onUpdate }) {
   const [confirmDeleteRecipeId, setConfirmDeleteRecipeId] = useState(null);
   const [confirmDeleteGenreId, setConfirmDeleteGenreId] = useState(null);
   const [editingGenre, setEditingGenre] = useState(null); // { id, name, color }
+  const [search, setSearch] = useState('');
+  const [listFilter, setListFilter] = useState('all'); // 'all' | genreId
 
+  // 登録済みレシピの絞り込み（レシピ名の部分一致＋ジャンル）
+  const filteredRecipes = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return recipes.filter((r) => {
+      const matchesGenre = listFilter === 'all' || r.genreId === listFilter;
+      const matchesSearch = !q || r.name.toLowerCase().includes(q);
+      return matchesGenre && matchesSearch;
+    });
+  }, [recipes, search, listFilter]);
+
+  const isFiltering = search.trim() !== '' || listFilter !== 'all';
 
   const genId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
@@ -89,6 +102,8 @@ export default function RecipeManager({ data, onUpdate }) {
       genres: remaining,
       recipes: recipes.map((r) => r.genreId === id ? { ...r, genreId: fallback.id } : r),
     });
+    // 削除したジャンルで絞り込み中なら、一覧が空にならないよう「全て」に戻す
+    if (listFilter === id) setListFilter('all');
     setConfirmDeleteGenreId(null);
   };
 
@@ -185,9 +200,68 @@ export default function RecipeManager({ data, onUpdate }) {
 
       {/* レシピ一覧 */}
       <div style={sectionStyle}>
-        <div style={sectionTitle}>📋 登録済みレシピ ({recipes.length})</div>
+        <div style={sectionTitle}>
+          📋 登録済みレシピ ({isFiltering ? `${filteredRecipes.length} / ${recipes.length}` : recipes.length})
+        </div>
+
+        {/* 検索 */}
+        {recipes.length > 0 && (
+          <>
+            <div style={{ position: 'relative', marginBottom: 8 }}>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="レシピ名で検索..."
+                style={{ ...inputStyle, borderRadius: 20, paddingRight: 34, background: '#fff' }}
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  aria-label="検索条件をクリア"
+                  style={{
+                    position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                    width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#eee',
+                    color: '#666', fontSize: fs(12), lineHeight: 1, cursor: 'pointer',
+                    fontFamily: 'inherit', padding: 0,
+                  }}
+                >×</button>
+              )}
+            </div>
+
+            {/* ジャンル絞り込み */}
+            <div style={{
+              display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 8,
+              WebkitOverflowScrolling: 'touch',
+            }}>
+              <button onClick={() => setListFilter('all')} style={{
+                padding: '4px 12px', borderRadius: 20,
+                border: `1.5px solid ${listFilter === 'all' ? '#3D3D3D' : '#ddd'}`,
+                background: listFilter === 'all' ? '#3D3D3D' : '#fff',
+                color: listFilter === 'all' ? '#fff' : '#888',
+                fontSize: fs(11), fontWeight: 600, cursor: 'pointer',
+                whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0,
+              }}>全て</button>
+              {genres.map((g) => (
+                <button key={g.id} onClick={() => setListFilter(g.id)} style={{
+                  padding: '4px 12px', borderRadius: 20,
+                  border: `1.5px solid ${listFilter === g.id ? g.color : '#ddd'}`,
+                  background: listFilter === g.id ? g.color + '22' : '#fff',
+                  color: listFilter === g.id ? g.color : '#888',
+                  fontSize: fs(11), fontWeight: 600, cursor: 'pointer',
+                  whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0,
+                }}>{g.name}</button>
+              ))}
+            </div>
+          </>
+        )}
+
         {recipes.length === 0 && <div style={{ color: '#aaa', fontSize: fs(13) }}>レシピがありません</div>}
-        {recipes.map((r) => {
+        {recipes.length > 0 && filteredRecipes.length === 0 && (
+          <div style={{ color: '#aaa', fontSize: fs(13), padding: '8px 0', textAlign: 'center' }}>
+            該当するレシピがありません
+          </div>
+        )}
+        {filteredRecipes.map((r) => {
           const g = genres.find((gen) => gen.id === r.genreId);
           const gc = g ? g.color : '#6C757D';
           return (
